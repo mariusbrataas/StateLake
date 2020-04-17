@@ -1,0 +1,26 @@
+{
+  "name": "statelake",
+  "version": "0.0.8",
+  "description": "",
+  "author": "Marius Brataas",
+  "main": "./build/index.js",
+  "scripts": {
+    "build": "clear && if [ -d './build' ]; then rm -rf ./build; fi && tsc",
+    "prepublishOnly": "npm version patch && npm run build"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "devDependencies": {
+    "@types/react": "^16.9.34",
+    "@types/react-dom": "^16.9.6",
+    "@types/react-test-renderer": "^16.9.2",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "react-scripts-ts": "^3.1.0",
+    "react-test-renderer": "^16.13.1",
+    "typescript": "^3.8.3"
+  },
+  "files": [
+    "build"
+  ]
+}
