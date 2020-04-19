@@ -5,8 +5,7 @@
   "author": "Marius Brataas",
   "main": "./build/index.js",
   "scripts": {
-    "build": "clear && if [ -d './build' ]; then rm -rf ./build; fi && tsc",
-    "prepublishOnly": "npm version patch && npm run build"
+    "build": "tsc"
   },
   "keywords": [],
   "license": "ISC",
