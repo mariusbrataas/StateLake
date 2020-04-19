@@ -1,12 +1,12 @@
 {
   "name": "statelake",
-  "version": "0.0.12",
+  "version": "0.0.14",
   "description": "",
   "author": "Marius Brataas <mariusbrataas@gmail.com> (https://github.com/mariusbrataas)",
   "license": "MIT",
   "repository": "github:mariusbrataas/statelake",
-  "main": "/build/index.js",
-  "types": "/build/index.d.ts",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
   "scripts": {
     "format": "prettier --write './src/*.ts'",
     "build": "tsc"
@@ -35,7 +35,7 @@
     "semi": true,
     "singleQuote": true,
     "tabWidth": 2,
-    "trailingComma": "all",
+    "trailingComma": "none",
     "useTabs": false,
     "vueIndentScriptAndStyle": true,
     "overrides": [
