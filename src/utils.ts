@@ -1,3 +1,5 @@
+import { IKeys } from "./interfaces";
+
 export function is(x: any, y: any) {
   return (x === y && (x !== 0 || 1 / x === 1 / y)) || (x !== x && y !== y);
 }
@@ -29,3 +31,61 @@ export const generateID = (function () {
       .join("")}-${count.toString(36)}`;
   };
 })();
+
+interface IStore {
+  show: boolean;
+  people: {
+    [id: string]: {
+      name: string;
+      email: string;
+      phone: string;
+      address: {
+        planet: "earth" | "mars";
+        country: string;
+      };
+    };
+  };
+}
+
+const store: IStore = null;
+
+type Keys<
+  T,
+  K0 extends IKeys<T>,
+  K1 extends IKeys<T[K0]>,
+  K2 extends IKeys<T[K0][K1]>,
+  K3 extends IKeys<T[K0][K1][K2]>
+> = [K0, K1, K2, K3];
+
+type IKey = string | number;
+
+interface IStruct {
+  [key: string]: IStruct | any;
+}
+
+function f<
+  T extends IStruct,
+  K0 extends IKeys<T>,
+  K1 extends IKeys<T[K0]>,
+  K2 extends IKeys<T[K0][K1]>,
+  K3 extends IKeys<T[K0][K1][K2]>,
+  K4 extends IKeys<T[K0][K1][K2][K3]>
+>(
+  state: T,
+  ...args: [K0?, K1?, K2?, K3?, K4?]
+): K0 extends IKey
+  ? K1 extends IKey
+    ? K2 extends IKey
+      ? K3 extends IKey
+        ? K4 extends IKey
+          ? T[K0][K1][K2][K3][K4]
+          : T[K0][K1][K2][K3]
+        : T[K0][K1][K2]
+      : T[K0][K1]
+    : T[K0]
+  : T {
+  console.log("Key");
+  return null;
+}
+
+const k = f(store, "people", "sfasdf", "address", "country");
