@@ -1,10 +1,14 @@
 {
   "name": "statelake",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "",
-  "author": "Marius Brataas",
-  "main": "./build/index.js",
+  "author": "Marius Brataas <mariusbrataas@gmail.com> (https://github.com/mariusbrataas)",
+  "license": "MIT",
+  "repository": "github:mariusbrataas/statelake",
+  "main": "/build/index.js",
+  "types": "/types/index.d.ts",
   "scripts": {
+    "format": "prettier --write './src/*.ts'",
     "build": "tsc"
   },
   "keywords": [],
@@ -13,11 +17,36 @@
     "@types/react": "^16.9.34",
     "@types/react-dom": "^16.9.6",
     "@types/react-test-renderer": "^16.9.2",
+    "prettier": "^2.0.4",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-scripts-ts": "^3.1.0",
     "react-test-renderer": "^16.13.1",
     "typescript": "^3.8.3"
+  },
+  "prettier": {
+    "arrowParens": "avoid",
+    "bracketSpacing": true,
+    "endOfLine": "lf",
+    "htmlWhitespaceSensitivity": "css",
+    "jsxBracketSameLine": false,
+    "printWidth": 80,
+    "proseWrap": "preserve",
+    "requirePragma": false,
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "all",
+    "useTabs": false,
+    "vueIndentScriptAndStyle": true,
+    "overrides": [
+      {
+        "files": "*.json",
+        "options": {
+          "printWidth": 200
+        }
+      }
+    ]
   },
   "files": [
     "build"
