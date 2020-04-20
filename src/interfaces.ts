@@ -4,14 +4,12 @@ export interface IBase {
 
 type Primitives = boolean | string | number | bigint;
 
-export type IKey = string | number;
-
 export type IKeys<T> = T extends Primitives
   ? never
   : keyof T & (T extends any[] ? number : string);
 
-export type SetStateReturn<R> = (arg: R) => void;
-export type UseStateReturn<R> = (arg: R) => [R, SetStateReturn<R>];
+export type SetStateReturn<T> = (arg?: T) => void;
+export type UseStateReturn<T> = (arg?: T) => [T, SetStateReturn<T>];
 
 export interface INode<T> {
   branches?: T extends any[]
