@@ -2,8 +2,14 @@
 import { useState, useRef } from 'react';
 
 // Local tools
-import { IBase, IKeys, INode } from './interfaces';
-import { is, generateID, generateIdentifier } from './utils';
+import {
+  IBase,
+  IKeys,
+  INode,
+  UseStateReturn,
+  SetStateReturn,
+} from "./interfaces";
+import { is, generateID, generateIdentifier } from "./utils";
 
 export class StateLake<T extends IBase> {
   // Properties
@@ -129,26 +135,15 @@ export class StateLake<T extends IBase> {
   }
 
   // delete
-  public delete<K0 extends IKeys<T>>(k0: K0): void;
-  public delete<K0 extends IKeys<T>, K1 extends IKeys<T[K0]>>(
-    k0: K0,
-    k1: K1
-  ): void;
-  public delete<
-    K0 extends IKeys<T>,
-    K1 extends IKeys<T[K0]>,
-    K2 extends IKeys<T[K0][K1]>
-  >(k0: K0, k1: K1, k2: K2): void;
   public delete<
     K0 extends IKeys<T>,
     K1 extends IKeys<T[K0]>,
     K2 extends IKeys<T[K0][K1]>,
     K3 extends IKeys<T[K0][K1][K2]>
-  >(k0: K0, k1: K1, k2: K2, k3: K3): void;
-  public delete(...args: any[]) {
+  >(...args: [K0, K1?, K2?, K3?]) {
     // Prop and path
-    const path = args.slice(0, -1);
-    const prop = args.slice(-1)[0];
+    const path = args.slice(0, -1) as string[];
+    const prop = args.slice(-1)[0] as string;
 
     // Get references
     const [parent_state, , parent_node] = this.ensureNode(path, prop);
@@ -160,84 +155,71 @@ export class StateLake<T extends IBase> {
   }
 
   // setState
-  public setState<K0 extends IKeys<T>>(k0: K0): (arg?: T[K0]) => void;
-  public setState<K0 extends IKeys<T>, K1 extends IKeys<T[K0]>>(
-    k0: K0,
-    k1: K1
-  ): (arg?: T[K0][K1]) => void;
-  public setState<
-    K0 extends IKeys<T>,
-    K1 extends IKeys<T[K0]>,
-    K2 extends IKeys<T[K0][K1]>
-  >(k0: K0, k1: K1, k2: K2): (arg?: T[K0][K1][K2]) => void;
   public setState<
     K0 extends IKeys<T>,
     K1 extends IKeys<T[K0]>,
     K2 extends IKeys<T[K0][K1]>,
     K3 extends IKeys<T[K0][K1][K2]>
-  >(k0: K0, k1: K1, k2: K2, k3: K3): (arg?: T[K0][K1][K2][K3]) => void;
-  public setState(...args: any[]) {
+  >(
+    ...args: [K0, K1?, K2?, K3?]
+  ): SetStateReturn<
+    K0 extends IKeys<T>
+      ? K1 extends IKeys<T[K0]>
+        ? K2 extends IKeys<T[K0][K1]>
+          ? K3 extends IKeys<T[K0][K1][K2]>
+            ? T[K0][K1][K2][K3]
+            : T[K0][K1][K2]
+          : T[K0][K1]
+        : T[K0]
+      : T
+  > {
     // Prop and path
-    const path = args.slice(0, -1);
-    const prop = args.slice(-1)[0];
+    const path = args.slice(0, -1) as string[];
+    const prop = args.slice(-1)[0] as string;
 
     // Get references
     const [, subscriber] = this.ensureNode(path, prop);
 
     // Return update func
-    return subscriber.update;
+    return subscriber.update as (arg: any) => void;
   }
 
   // useState
-  public useState<K0 extends IKeys<T>>(
-    k0: K0
-  ): (initialState?: T[K0]) => [T[K0], (arg: T[K0]) => void];
-  public useState<K0 extends IKeys<T>, K1 extends IKeys<T[K0]>>(
-    k0: K0,
-    k1: K1
-  ): (initialState?: T[K0][K1]) => [T[K0][K1], (arg: T[K0][K1]) => void];
-  public useState<
-    K0 extends IKeys<T>,
-    K1 extends IKeys<T[K0]>,
-    K2 extends IKeys<T[K0][K1]>
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2
-  ): (
-    initialState?: T[K0][K1][K2]
-  ) => [T[K0][K1][K2], (arg: T[K0][K1][K2]) => void];
   public useState<
     K0 extends IKeys<T>,
     K1 extends IKeys<T[K0]>,
     K2 extends IKeys<T[K0][K1]>,
     K3 extends IKeys<T[K0][K1][K2]>
   >(
-    k0: K0,
-    k1: K1,
-    k2: K2,
-    k3: K3
-  ): (
-    initialState?: T[K0][K1][K2][K3]
-  ) => [T[K0][K1][K2][K3], (arg: T[K0][K1][K2][K3]) => void];
-  public useState(...args: any[]) {
+    ...args: [K0, K1?, K2?, K3?]
+  ): UseStateReturn<
+    K0 extends IKeys<T>
+      ? K1 extends IKeys<T[K0]>
+        ? K2 extends IKeys<T[K0][K1]>
+          ? K3 extends IKeys<T[K0][K1][K2]>
+            ? T[K0][K1][K2][K3]
+            : T[K0][K1][K2]
+          : T[K0][K1]
+        : T[K0]
+      : T
+  > {
     // Keep a reference to already created parent and subscriber
     const state_ref = useRef<any>(null);
     const node_ref = useRef<INode<any>>({ identifier: '' });
     const identifier_ref = useRef<string | null>(null);
 
     // Prop
-    const prop = args.slice(-1)[0];
+    const prop = args.slice(-1)[0] as string;
 
     // Traverse tree down to parent of referenced node
     if (!(state_ref.current && node_ref.current))
       [state_ref.current, node_ref.current] = this.ensureNode(
-        args.slice(0, -1),
+        args.slice(0, -1) as string[],
         prop
       );
 
-    // Return useState middleware
-    return (initialState: any) => {
+    // Return useState
+    return function (initialState) {
       // Initialize hook
       const [state, setState] = useState(
         state_ref.current[prop] === undefined
@@ -256,7 +238,7 @@ export class StateLake<T extends IBase> {
       }
 
       // Return state and state updater
-      return [state, node_ref.current.update];
+      return [state, node_ref.current.update as (arg: any) => void];
     };
   }
 }
