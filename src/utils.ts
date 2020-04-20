@@ -9,7 +9,7 @@ export function generateIdentifier() {
 export const generateID = (function () {
   // Available tokens
   const TOKENS =
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
+    '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
 
   // Base ID
   const day_one = 1577833200000; // Midnight, new years eve, 2020
@@ -25,7 +25,7 @@ export const generateID = (function () {
     return `${base_id}-${Array.from(
       window.crypto.getRandomValues(new Uint8Array(4))
     )
-      .map((idx) => TOKENS[idx % TOKENS.length])
-      .join("")}-${count.toString(36)}`;
+      .map(idx => TOKENS[idx % TOKENS.length])
+      .join('')}-${count.toString(36)}`;
   };
 })();

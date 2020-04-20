@@ -1,5 +1,5 @@
 // React
-import { useState, useRef } from "react";
+import { useState, useRef } from 'react';
 
 // Local tools
 import {
@@ -44,7 +44,7 @@ export class StateLake<T extends IBase> {
   ): [any, INode<any>, INode<any>] {
     var [parent_state, parent_node]: [any, INode<any>] = [
       undefined,
-      { identifier: generateIdentifier() },
+      { identifier: generateIdentifier() }
     ];
 
     // Traverse tree down to referenced node
@@ -91,11 +91,11 @@ export class StateLake<T extends IBase> {
             // Trigger all hooks
             const hooks = node.hooks || [];
             node.hooks = [];
-            hooks.forEach((callback) => callback(tmp_parent_state[tmp_prop]));
+            hooks.forEach(callback => callback(tmp_parent_state[tmp_prop]));
 
             // Cleanup branches and recurse down tree
             node.branches = Object.keys(node.branches || {})
-              .filter((key) => key in arg)
+              .filter(key => key in arg)
               .reduce((current, key) => {
                 if (node.branches && node.branches[key].update) {
                   node.branches[key].update(
@@ -110,14 +110,14 @@ export class StateLake<T extends IBase> {
             // Trigger optional onChange callback
             if (!new_parent_state && this.onChangeCallback)
               this.onChangeCallback(
-                (tmp_path || []).concat(tmp_prop).join(".")
+                (tmp_path || []).concat(tmp_prop).join('.')
               );
           }
         };
         return [
           tmp_parent_state[tmp_prop],
           tmp_node.branches[tmp_prop],
-          tmp_path.concat(tmp_prop),
+          tmp_path.concat(tmp_prop)
         ];
       },
       [this.state, this.nodes, []]
@@ -205,7 +205,7 @@ export class StateLake<T extends IBase> {
   > {
     // Keep a reference to already created parent and subscriber
     const state_ref = useRef<any>(null);
-    const node_ref = useRef<INode<any>>({ identifier: "" });
+    const node_ref = useRef<INode<any>>({ identifier: '' });
     const identifier_ref = useRef<string | null>(null);
 
     // Prop
