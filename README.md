@@ -67,15 +67,7 @@ const store = new StateLake<IStore>({
   notes: {}
 });
 
-/**
- * The following function is only responsible for showing or hiding the sidebar.
- * It therefore only needs to connect to the "show_sidebar"-property in our store.
- *
- * Try typing this yourself. You'll see how IntelliSense is able to suggest
- * properties for you, and ensures that you provide the correct input.
- *
- * An example: The "show_sidebar"-property will only accept a boolean value.
- */
+//Now let's create a button and connect it to the "show_sidebar"-property in our store.
 function ShowSidebarButton() {
   // Lake states
   const [show, setShow] = store.useState('show_sidebar')(false);
@@ -88,9 +80,7 @@ function ShowSidebarButton() {
   );
 }
 
-/**
- * The next function will render a note, and enable the user to edit it.
- */
+// Render a note that the user can edit
 function Note({ id }: { id: string }) {
   // Lake states
   const [title, setTitle] = store.useState('notes', id, 'title')();
@@ -105,9 +95,7 @@ function Note({ id }: { id: string }) {
   );
 }
 
-/**
- * The Note-function can also attach to the store a bit higher up in the hierarchy:
- */
+// The Note-function may also connect to the state a bit higher up in the hierarchy:
 function Note({ id }: { id: string }) {
   // Lake states
   const [note, setNote] = store.useState('notes', id)();
