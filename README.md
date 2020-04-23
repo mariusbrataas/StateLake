@@ -116,7 +116,7 @@ function Note({ id }: { id: string }) {
 }
 ```
 
-### Examples
+### Examples (more coming soon)
 
 Here are some examples in CodeSandbox.
 
