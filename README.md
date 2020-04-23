@@ -43,9 +43,6 @@ import StateLake from 'statelake';
  *
  * This will enable IntelliSense and type checking to work with your entire store,
  * so you don't have to input your types anywhere else.
- *
- * This example is used in an example project on CodeSandbox:
- * https://codesandbox.io/s/statelake-example-0ptc5
  */
 interface IStore {
   show_sidebar: boolean;
@@ -61,8 +58,8 @@ interface IStore {
 
 /**
  * Initialize the store.
- * By providing the store interface this way you'll get IntelliSense working with
- * you all the way.
+ * By providing the store interface this way you'll get IntelliSense
+ * working with you all the way.
  */
 const store = new StateLake<IStore>({
   show_sidebar: false,
@@ -74,8 +71,8 @@ const store = new StateLake<IStore>({
  * The following function is only responsible for showing or hiding the sidebar.
  * It therefore only needs to connect to the "show_sidebar"-property in our store.
  *
- * Try typing this yourself. You'll see how IntelliSense is able to suggest properties
- * for you, and ensures that you provide the correct input.
+ * Try typing this yourself. You'll see how IntelliSense is able to suggest
+ * properties for you, and ensures that you provide the correct input.
  *
  * An example: The "show_sidebar"-property will only accept a boolean value.
  */
