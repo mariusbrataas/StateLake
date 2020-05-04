@@ -1,5 +1,5 @@
 // React
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 // Local tools
 import { IBase, IKeys, INode } from './interfaces';
@@ -254,6 +254,17 @@ export class StateLake<T extends IBase> {
         if (node_ref.current && node_ref.current.hooks)
           node_ref.current.hooks.push(setState);
       }
+
+      // Cleanup
+      useEffect(
+        () =>
+          function cleanup() {
+            node_ref.current.hooks = node_ref.current.hooks?.filter(
+              test => test !== setState
+            );
+          },
+        []
+      );
 
       // Return state and state updater
       return [state, node_ref.current.update];
