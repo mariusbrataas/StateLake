@@ -259,9 +259,11 @@ export class StateLake<T extends IBase> {
       useEffect(
         () =>
           function cleanup() {
-            node_ref.current.hooks = node_ref.current.hooks?.filter(
-              test => test !== setState
-            );
+            node_ref.current.hooks = node_ref.current
+              ? node_ref.current.hooks
+                ? node_ref.current.hooks.filter(test => test !== setState)
+                : undefined
+              : undefined;
           },
         []
       );
