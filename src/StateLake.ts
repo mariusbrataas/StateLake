@@ -70,12 +70,7 @@ export class StateLake<T extends IBase> {
             tmp_parent_state = new_parent_state;
 
           // Should update?
-          if (
-            !(
-              new_parent_state === undefined &&
-              is(arg, tmp_parent_state[tmp_prop])
-            )
-          ) {
+          if (!is(arg, tmp_parent_state[tmp_prop])) {
             // Update state
             tmp_parent_state[tmp_prop] = arg;
 
@@ -223,18 +218,18 @@ export class StateLake<T extends IBase> {
   public useState(...args: any[]) {
     // Keep a reference to already created parent and subscriber
     const state_ref = useRef<any>(null);
-    const node_ref = useRef<INode<any>>({ identifier: '' });
+    const node_ref = useRef<INode<any>>({
+      identifier: ''
+    });
     const identifier_ref = useRef<string | null>(null);
 
-    // Prop
+    // Prop and path
+    const path = args.slice(0, -1);
     const prop = args.slice(-1)[0];
 
     // Traverse tree down to parent of referenced node
     if (!(state_ref.current && node_ref.current))
-      [state_ref.current, node_ref.current] = this.ensureNode(
-        args.slice(0, -1),
-        prop
-      );
+      [state_ref.current, node_ref.current] = this.ensureNode(path, prop);
 
     // Return useState middleware
     return (initialState: any) => {
