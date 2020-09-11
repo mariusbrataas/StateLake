@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { IBase, IKeys, INode } from './interfaces';
 import { is, generateID, generateIdentifier } from './utils';
 
-export class StateLake<T extends IBase> {
+export class StateLake<T> {
   // Properties
   public state: T;
   private nodes: INode<T>;
@@ -217,6 +217,7 @@ export class StateLake<T extends IBase> {
   ) => [T[K0][K1][K2][K3], (arg: T[K0][K1][K2][K3]) => void];
   public useState(...args: any[]) {
     // Keep a reference to already created parent and subscriber
+    const previous_args = useRef<any>(null);
     const state_ref = useRef<any>(null);
     const node_ref = useRef<INode<any>>({
       identifier: ''
@@ -228,8 +229,15 @@ export class StateLake<T extends IBase> {
     const prop = args.slice(-1)[0];
 
     // Traverse tree down to parent of referenced node
-    if (!(state_ref.current && node_ref.current))
+    if (
+      !(
+        (state_ref.current && node_ref.current) ||
+        args.join('.') === previous_args.current
+      )
+    ) {
       [state_ref.current, node_ref.current] = this.ensureNode(path, prop);
+      previous_args.current = args.join('.');
+    }
 
     // Return useState middleware
     return (initialState: any) => {
@@ -251,6 +259,8 @@ export class StateLake<T extends IBase> {
       }
 
       // Cleanup
+
+      // TODO - On args change: Should remove old hooks and add new ones
       useEffect(
         () =>
           function cleanup() {
@@ -263,7 +273,7 @@ export class StateLake<T extends IBase> {
         []
       );
 
-      // Return state and state updater
+      // Return state and state update function
       return [state, node_ref.current.update];
     };
   }
