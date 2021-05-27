@@ -1,28 +1,31 @@
 {
   "name": "statelake",
-  "version": "0.0.20",
+  "version": "1.0.6",
   "description": "",
-  "author": "Marius Brataas <mariusbrataas@gmail.com> (https://github.com/mariusbrataas)",
-  "license": "MIT",
-  "repository": "github:mariusbrataas/statelake",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
-    "format": "prettier --write './src/*.ts'",
-    "build": "tsc"
+    "clean": "rm -rf build",
+    "build": "tsc",
+    "cleanbuild": "npm run clean && npm run build"
   },
   "keywords": [],
-  "devDependencies": {
-    "@types/react": "^16.9.34",
-    "@types/react-dom": "^16.9.6",
-    "@types/react-test-renderer": "^16.9.2",
-    "prettier": "^2.0.4",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "react-scripts-ts": "^3.1.0",
-    "react-test-renderer": "^16.13.1",
-    "typescript": "^3.8.3"
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "typescript": "^4.2.0"
   },
+  "devDependencies": {
+    "@types/react": "^16.8 || ^17",
+    "prettier": "^2.2.1",
+    "react": "^16.8 || ^17"
+  },
+  "peerDependencies": {
+    "react": "^16.8 || ^17"
+  },
+  "files": [
+    "build"
+  ],
   "prettier": {
     "arrowParens": "avoid",
     "bracketSpacing": true,
@@ -46,8 +49,5 @@
         }
       }
     ]
-  },
-  "files": [
-    "build"
-  ]
+  }
 }
