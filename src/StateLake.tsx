@@ -1,6 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { EmptyPath, IBase, Keys } from './interfaces';
 import { autoBind, extractIdComponents, generateId, nullish } from './utils';
+
+/**
+ * Get all available keys on type
+ */
+export type Keys<T, C> = C extends any[]
+  ? never
+  : C extends string
+  ? never
+  : keyof T;
+
+/**
+ * Basic state structure
+ */
+export interface IBase {
+  [key: string]: any;
+}
+
+/**
+ * Empty path type
+ */
+export type EmptyPath = [any, any];
 
 /**
  * Mapped branch
@@ -55,9 +75,10 @@ function MapStateLake<
   ) => -1 | 0 | 1;
 } & Omit<P, 'branch' | 'parent'>) {
   // ID - Helps prevent duplicate keys in the dom
-  const id = useMemo(() => `${branch.getId()}_${StateLake.generateId()}`, [
-    branch
-  ]);
+  const id = useMemo(
+    () => `${branch.getId()}_${StateLake.generateId()}`,
+    [branch]
+  );
 
   // Keys
   const [stateKeys, state] = branch.useKeys();
@@ -366,11 +387,13 @@ export class StateLake<T extends IBase> {
    */
   private ensureBranch([prop, ...path]: string[]): StateLake<any> {
     if (prop === undefined) return this;
-    return ((this.branches[prop as Keys<T, T>] =
-      this.branches[prop as Keys<T, T>] ||
-      new StateLake(this.state && this.state[prop], this, prop)) as StateLake<
-      T[Keys<T, T>]
-    >).ensureBranch(path);
+    return (
+      (this.branches[prop as Keys<T, T>] =
+        this.branches[prop as Keys<T, T>] ||
+        new StateLake(this.state && this.state[prop], this, prop)) as StateLake<
+        T[Keys<T, T>]
+      >
+    ).ensureBranch(path);
   }
 
   /**
@@ -380,10 +403,8 @@ export class StateLake<T extends IBase> {
    * hook detached while it's state is undefined or null.
    */
   private detachBranch(branch: StateLake<T[Keys<T, T>]>) {
-    const {
-      [branch.getKey() as Keys<T, T>]: remove_branch,
-      ...new_branches
-    } = this.branches;
+    const { [branch.getKey() as Keys<T, T>]: remove_branch, ...new_branches } =
+      this.branches;
     this.branches = new_branches as StateLake<T>['branches'];
   }
 
@@ -427,10 +448,8 @@ export class StateLake<T extends IBase> {
         add_or_remove = true;
 
         // Change state
-        const {
-          [branch.getKey()]: remove_state,
-          ...new_state
-        } = this.getState();
+        const { [branch.getKey()]: remove_state, ...new_state } =
+          this.getState();
         this.changeState(new_state as any);
 
         // Remove from branches
@@ -626,10 +645,10 @@ export class StateLake<T extends IBase> {
     >
   >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseBranch<T[K0][K1][K2][K3][K4]>;
   public useBranch(...path: string[]) {
-    return useMemo(() => this.getBranch(...(path as EmptyPath)), [
-      this.id,
-      ...path
-    ]);
+    return useMemo(
+      () => this.getBranch(...(path as EmptyPath)),
+      [this.id, ...path]
+    );
   }
 
   /**
