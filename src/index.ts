@@ -1,2 +1,1 @@
-export { StateLake, StateLake as default } from './StateLake';
-export { generateID } from './utils';
+export { StateLake as default, StateLake } from './StateLake';

@@ -6,10 +6,10 @@ It's been designed to seamlessly replace normal React hooks and states wherever 
 
 ```tsx
 // Normal React hooks
-const [color, setColor] = React.useState('blue');
+const [state, setState] = React.useState();
 
 // StateLake hooks
-const [color, setColor] = store.useState('color')('blue');
+const [state, setState] = store.useState();
 ```
 
 Running on top of hooks, StateLakes are lightweight, easy to use, and integrates really well with TypeScript and IntelliSense.
@@ -35,7 +35,7 @@ npm install statelake
 ### Usage
 
 ```tsx
-import StateLake from 'statelake';
+import { StateLake } from 'statelake';
 
 /**
  * Recommended, not necessary:
@@ -67,24 +67,39 @@ const store = new StateLake<IStore>({
   notes: {}
 });
 
-//Now let's create a button and connect it to the "show_sidebar"-property in our store.
+/**
+ * Now let's create a buton and connect it to the "show_sidebar"
+ * property in our store.
+ */
 function ShowSidebarButton() {
   // Lake states
-  const [show, setShow] = store.useState('show_sidebar')(false);
+  const [show, setShow] = store.useState('show_sidebar');
+
+  // Toggle show/hide sidebar
+  const toggleSidebar = () => setShow(!show);
 
   // Render
   return (
-    <button onClick={() => setShow(!show)}>
+    <button onClick={toggleSidebar}>
       {show ? 'Hide sidebar' : 'Show sidebar'}
     </button>
   );
 }
 
-// Render a note that the user can edit
+/**
+ * Render a note that the user can edit
+ */
 function Note({ id }: { id: string }) {
+  // Reference the branch this node will use
+  const branch = store.useBranch('notes', id);
+
   // Lake states
-  const [title, setTitle] = store.useState('notes', id, 'title')();
-  const [body, setBody] = store.useState('notes', id, 'body')();
+  const [title, setTitle] = branch.useState('title');
+  const [body, setBody] = branch.useState('body');
+
+  // Alternatively, you can connect to the state like this:
+  // const [title, setTitle] = store.useState('notes', id, 'title');
+  // const [body, setBody] = store.useState('notes', id, 'body');
 
   // Render
   return (
@@ -95,7 +110,10 @@ function Note({ id }: { id: string }) {
   );
 }
 
-// The Note-function may also connect to the state a bit higher up in the hierarchy:
+/**
+ * The Note-function may also connect to the state a
+ * bit higher up in the hierarchy:
+ */
 function Note({ id }: { id: string }) {
   // Lake states
   const [note, setNote] = store.useState('notes', id)();
