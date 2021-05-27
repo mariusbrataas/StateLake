@@ -133,9 +133,3 @@ function Note({ id }: { id: string }) {
   );
 }
 ```
-
-### Examples (more coming soon)
-
-Here are some examples in CodeSandbox.
-
-- **[Notebook app](https://0ptc5.csb.app/)**: [Sandbox](https://codesandbox.io/s/statelake-example-0ptc5?file=/src/App.tsx)
