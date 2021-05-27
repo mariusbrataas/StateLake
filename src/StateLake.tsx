@@ -4,11 +4,7 @@ import { autoBind, extractIdComponents, generateId, nullish } from './utils';
 /**
  * Get all available keys on type
  */
-export type Keys<T, C> = C extends any[]
-  ? never
-  : C extends string
-  ? never
-  : keyof T;
+export type Keys<T, C> = C extends any[] ? never : C extends string ? never : keyof T;
 
 /**
  * Basic state structure
@@ -75,10 +71,7 @@ function MapStateLake<
   ) => -1 | 0 | 1;
 } & Omit<P, 'branch' | 'parent'>) {
   // ID - Helps prevent duplicate keys in the dom
-  const id = useMemo(
-    () => `${branch.getId()}_${StateLake.generateId()}`,
-    [branch]
-  );
+  const id = useMemo(() => `${branch.getId()}_${StateLake.generateId()}`, [branch]);
 
   // Keys
   const [stateKeys, state] = branch.useKeys();
@@ -86,10 +79,7 @@ function MapStateLake<
   // Sorted keys
   const keys = propKeys || stateKeys;
   const sortedKeys = useMemo(
-    () =>
-      sort
-        ? keys.sort((keyA, keyB) => sort(state[keyA], state[keyB], keyA, keyB))
-        : keys,
+    () => (sort ? keys.sort((keyA, keyB) => sort(state[keyA], state[keyB], keyA, keyB)) : keys),
     [sort, keys.length, keys.join('')]
   );
 
@@ -137,9 +127,7 @@ export type UseState<T extends IBase> = [T, SetState<T>, StateLake<T>];
 /**
  * Return type of useInitialState
  */
-export type UseInitialState<T extends IBase> = (
-  initial_state: T
-) => UseState<T>;
+export type UseInitialState<T extends IBase> = (initial_state: T) => UseState<T>;
 
 /**
  * Return type of useEffect
@@ -208,25 +196,15 @@ export class StateLake<T extends IBase> {
    * @param parent
    * @param key
    */
-  constructor(
-    state: T | (() => T),
-    parent?: StateLake<T>['parent'],
-    key?: StateLake<T>['key']
-  ) {
+  constructor(state: T | (() => T), parent?: StateLake<T>['parent'], key?: StateLake<T>['key']) {
     // Initialize parameter properties
-    this.state =
-      state && typeof state === 'function'
-        ? (state as () => T)()
-        : (state as T);
+    this.state = state && typeof state === 'function' ? (state as () => T)() : (state as T);
     this.parent = parent;
     this.key = key || '';
 
     // Initialize basic properties
     this.top = this.parent ? this.parent.top : this;
-    this.path = [
-      ...(this.parent?.getPath() || []),
-      ...(this.key ? [this.key] : [])
-    ];
+    this.path = [...(this.parent?.getPath() || []), ...(this.key ? [this.key] : [])];
 
     // Unique identifier
     this.id = StateLake.generateId();
@@ -326,8 +304,7 @@ export class StateLake<T extends IBase> {
    */
   public countHooks(): number {
     return Object.keys(this.branches).reduce(
-      (total, key) =>
-        total + (this.branches[key as Keys<T, T>]?.countHooks() || 0),
+      (total, key) => total + (this.branches[key as Keys<T, T>]?.countHooks() || 0),
       this.hooks.length
     );
   }
@@ -337,8 +314,7 @@ export class StateLake<T extends IBase> {
    */
   public countBranches(): number {
     return Object.keys(this.branches).reduce(
-      (total, key) =>
-        total + (this.branches[key as Keys<T, T>]?.countBranches() || 0),
+      (total, key) => total + (this.branches[key as Keys<T, T>]?.countBranches() || 0),
       1
     );
   }
@@ -390,9 +366,7 @@ export class StateLake<T extends IBase> {
     return (
       (this.branches[prop as Keys<T, T>] =
         this.branches[prop as Keys<T, T>] ||
-        new StateLake(this.state && this.state[prop], this, prop)) as StateLake<
-        T[Keys<T, T>]
-      >
+        new StateLake(this.state && this.state[prop], this, prop)) as StateLake<T[Keys<T, T>]>
     ).ensureBranch(path);
   }
 
@@ -403,8 +377,7 @@ export class StateLake<T extends IBase> {
    * hook detached while it's state is undefined or null.
    */
   private detachBranch(branch: StateLake<T[Keys<T, T>]>) {
-    const { [branch.getKey() as Keys<T, T>]: remove_branch, ...new_branches } =
-      this.branches;
+    const { [branch.getKey() as Keys<T, T>]: remove_branch, ...new_branches } = this.branches;
     this.branches = new_branches as StateLake<T>['branches'];
   }
 
@@ -448,8 +421,7 @@ export class StateLake<T extends IBase> {
         add_or_remove = true;
 
         // Change state
-        const { [branch.getKey()]: remove_state, ...new_state } =
-          this.getState();
+        const { [branch.getKey()]: remove_state, ...new_state } = this.getState();
         this.changeState(new_state as any);
 
         // Remove from branches
@@ -504,10 +476,7 @@ export class StateLake<T extends IBase> {
     // Recurse down branches
     if (!nullish(state))
       Object.keys(this.branches).forEach(key =>
-        this.branches[key as Keys<T, T>]?.updateState(
-          key in state ? state?.[key] : null,
-          do_update
-        )
+        this.branches[key as Keys<T, T>]?.updateState(key in state ? state?.[key] : null, do_update)
       );
   }
 
@@ -551,10 +520,7 @@ export class StateLake<T extends IBase> {
     K1 extends Keys<T[K0], T | T[K0]>,
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
+    K4 extends Keys<T[K0][K1][K2][K3], T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]>
   >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): GetBranch<T[K0][K1][K2][K3][K4]>;
   public getBranch(...path: string[]) {
     return this.ensureBranch(path);
@@ -602,10 +568,7 @@ export class StateLake<T extends IBase> {
     K1 extends Keys<T[K0], T | T[K0]>,
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
+    K4 extends Keys<T[K0][K1][K2][K3], T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]>
   >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): SetState<T[K0][K1][K2][K3][K4]>;
   public setState(...path: string[]) {
     return this.getBranch(...(path as EmptyPath)).updateState;
@@ -639,16 +602,10 @@ export class StateLake<T extends IBase> {
     K1 extends Keys<T[K0], T | T[K0]>,
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
+    K4 extends Keys<T[K0][K1][K2][K3], T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]>
   >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseBranch<T[K0][K1][K2][K3][K4]>;
   public useBranch(...path: string[]) {
-    return useMemo(
-      () => this.getBranch(...(path as EmptyPath)),
-      [this.id, ...path]
-    );
+    return useMemo(() => this.getBranch(...(path as EmptyPath)), [this.id, ...path]);
   }
 
   /**
@@ -682,10 +639,7 @@ export class StateLake<T extends IBase> {
     K1 extends Keys<T[K0], T | T[K0]>,
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
+    K4 extends Keys<T[K0][K1][K2][K3], T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]>
   >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseState<T[K0][K1][K2][K3][K4]>;
   public useState(...path: string[]) {
     // Reference branch
@@ -725,10 +679,10 @@ export class StateLake<T extends IBase> {
    */
   public useInitialState(): UseInitialState<T>;
   public useInitialState<K0 extends Keys<T, T>>(k0: K0): UseInitialState<T[K0]>;
-  public useInitialState<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>
-  >(k0: K0, k1: K1): UseInitialState<T[K0][K1]>;
+  public useInitialState<K0 extends Keys<T, T>, K1 extends Keys<T[K0], T | T[K0]>>(
+    k0: K0,
+    k1: K1
+  ): UseInitialState<T[K0][K1]>;
   public useInitialState<
     K0 extends Keys<T, T>,
     K1 extends Keys<T[K0], T | T[K0]>,
@@ -745,17 +699,8 @@ export class StateLake<T extends IBase> {
     K1 extends Keys<T[K0], T | T[K0]>,
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2,
-    k3: K3,
-    k4: K4
-  ): UseInitialState<T[K0][K1][K2][K3][K4]>;
+    K4 extends Keys<T[K0][K1][K2][K3], T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]>
+  >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseInitialState<T[K0][K1][K2][K3][K4]>;
   public useInitialState(...path: string[]) {
     // Create hook
     const [state, setState] = this.useState(...(path as EmptyPath));
@@ -791,10 +736,7 @@ export class StateLake<T extends IBase> {
     K1 extends Keys<T[K0], T | T[K0]>,
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
+    K4 extends Keys<T[K0][K1][K2][K3], T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]>
   >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseEffect<T[K0][K1][K2][K3][K4]>;
   public useEffect(...path: string[]) {
     // Current state
@@ -802,11 +744,7 @@ export class StateLake<T extends IBase> {
 
     // Return callback to create effect
     return (
-      effect: (
-        state: any,
-        setState: (state: any) => void,
-        branch: StateLake<any>
-      ) => void
+      effect: (state: any, setState: (state: any) => void, branch: StateLake<any>) => void
     ) => {
       useEffect(() => effect(state, setState, branch), [state]);
     };
@@ -839,10 +777,7 @@ export class StateLake<T extends IBase> {
     K1 extends Keys<T[K0], T | T[K0]>,
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
+    K4 extends Keys<T[K0][K1][K2][K3], T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]>
   >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseKeys<T[K0][K1][K2][K3][K4]>;
   public useKeys(...path: string[]) {
     // Current state

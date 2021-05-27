@@ -32,7 +32,7 @@
     "endOfLine": "lf",
     "htmlWhitespaceSensitivity": "css",
     "jsxBracketSameLine": false,
-    "printWidth": 80,
+    "printWidth": 100,
     "proseWrap": "preserve",
     "requirePragma": false,
     "semi": true,
