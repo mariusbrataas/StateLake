@@ -315,28 +315,6 @@ export class StateLake<T extends IBase> {
   }
 
   /**
-   * Count the number of hooks in this branch and all sub-branches
-   */
-  public countHooks(): number {
-    return Object.keys(this.branches).reduce(
-      (total, key) =>
-        total + (this.branches[key as Keys<T, T>]?.countHooks() || 0),
-      this.hooks.length
-    );
-  }
-
-  /**
-   * Count the number of branches in this branch and all sub-branches
-   */
-  public countBranches(): number {
-    return Object.keys(this.branches).reduce(
-      (total, key) =>
-        total + (this.branches[key as Keys<T, T>]?.countBranches() || 0),
-      1
-    );
-  }
-
-  /**
    * Get state
    *
    * Returns the current state object of this branch.
