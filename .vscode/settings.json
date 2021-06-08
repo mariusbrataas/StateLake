@@ -3,7 +3,7 @@
     "**/.git": true,
     "**/.DS_Store": true,
     "**/node_modules": true,
-    "**/build": false
+    "**/build": true
   },
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,

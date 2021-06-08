@@ -1,13 +1,16 @@
 {
   "name": "statelake",
-  "version": "1.0.8",
+  "version": "1.0.7",
   "description": "",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
     "clean": "rm -rf build",
     "build": "tsc",
-    "cleanbuild": "npm run clean && npm run build"
+    "cleanbuild": "npm run clean && npm run build",
+    "bump": "npm version patch",
+    "prepublishOnly": "npm run cleanbuild",
+    "postpublish": "npm run bump"
   },
   "keywords": [],
   "author": "",

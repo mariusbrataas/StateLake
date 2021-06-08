@@ -49,72 +49,6 @@ function MappedBranch<
 }
 
 /**
- * Map StateLake
- */
-function MapStateLake<
-  T extends IBase,
-  P extends {
-    branch: StateLake<T[Keys<T, T>]>;
-    parent?: StateLake<T>;
-  }
->({
-  branch,
-  Component,
-  keys: propKeys,
-  sort,
-  ...props
-}: {
-  branch: StateLake<T>;
-  Component: (props: P) => JSX.Element;
-  keys?: string[];
-  sort?: (
-    value_a: T[Keys<T, T>],
-    value_b: T[Keys<T, T>],
-    key_a: string,
-    key_b: string
-  ) => -1 | 0 | 1;
-} & Omit<P, 'branch' | 'parent'>) {
-  // ID - Helps prevent duplicate keys in the dom
-  const id = useMemo(
-    () => `${branch.getId()}_${StateLake.generateId()}`,
-    [branch]
-  );
-
-  // Keys
-  const [stateKeys, state] = branch.useKeys();
-
-  // Sorted keys
-  const keys = propKeys || stateKeys;
-  const sortedKeys = useMemo(
-    () =>
-      sort
-        ? keys.sort((keyA, keyB) => sort(state[keyA], state[keyB], keyA, keyB))
-        : keys,
-    [sort, keys.length, keys.join('')]
-  );
-
-  // Memoized nodes
-  return useMemo(
-    () => (
-      <>
-        {sortedKeys.map(key =>
-          state[key] === null ? undefined : (
-            <MappedBranch
-              key={`${id}_${key}`}
-              id={key}
-              parent={branch}
-              Component={Component}
-              {...props}
-            />
-          )
-        )}
-      </>
-    ),
-    [sortedKeys.length, sortedKeys.join(''), ...Object.values(props || {})]
-  );
-}
-
-/**
  * Return type of getBranch
  */
 export type GetBranch<T extends IBase> = StateLake<T>;
@@ -240,12 +174,6 @@ export class StateLake<T extends IBase> {
   public static useLake<T extends IBase>(state: T | (() => T)) {
     return useMemo(() => new StateLake(state), []);
   }
-
-  /**
-   * Efficiently map all sub-branches of a StateLake object, and pass the corresponding
-   * branches to the given component.
-   */
-  public static Map = MapStateLake;
 
   /**
    * Generate a somewhat unique ID.
@@ -782,5 +710,67 @@ export class StateLake<T extends IBase> {
 
     // Return memoized keys
     return useMemo(() => [Object.keys(state || {}), state, branch], [state]);
+  }
+
+  /**
+   * Efficiently map all sub-branches of a StateLake object, and pass the corresponding
+   * branches to the given component.
+   */
+  public Map<
+    P extends { branch: StateLake<T[Keys<T, T>]>; parent?: StateLake<T> }
+  >({
+    Component,
+    keys: propKeys,
+    sort,
+    ...props
+  }: {
+    Component: (props: P) => JSX.Element;
+    keys?: string[];
+    sort?: (
+      value_a: T[Keys<T, T>],
+      value_b: T[Keys<T, T>],
+      key_a: string,
+      key_b: string
+    ) => -1 | 0 | 1;
+  } & Omit<P, 'branch' | 'parent'>) {
+    // ID - Helps prevent duplicate keys in the dom
+    const id = useMemo(() => `${this.getId()}_${StateLake.generateId()}`, []);
+
+    // State
+    const [stateKeys, state] = this.useKeys();
+    const keys = propKeys || stateKeys;
+
+    // Helper: Sort keys
+    const sortKeys = () =>
+      sort
+        ? keys.sort((keyA, keyB) => sort(state[keyA], state[keyB], keyA, keyB))
+        : keys;
+
+    // Sorted keys
+    const sortedKeys = useMemo(sortKeys, [sort, keys.length, keys.join('')]);
+
+    // Helper: Create nodes
+    const createNodes = () => (
+      <>
+        {sortedKeys.map(key =>
+          nullish(state[key]) ? undefined : (
+            <MappedBranch
+              key={`${id}_${key}`}
+              id={key}
+              parent={this}
+              Component={Component}
+              {...props}
+            />
+          )
+        )}
+      </>
+    );
+
+    // Memoized nodes
+    return useMemo(createNodes, [
+      sortedKeys.length,
+      sortedKeys.join(''),
+      ...Object.values(props || {})
+    ]);
   }
 }
