@@ -97,27 +97,23 @@ export class StateLake<T extends IBase> {
   /**
    * Current state
    */
-  private state: T;
+  private value: T;
 
   /**
    * Reference to parent of this branch (if any).
    */
-  private parent?: StateLake<any>;
+  public readonly parent?: StateLake<any>;
 
   /**
    * The key used by the parent of this branch (if any) to reference this branch.
+   * If the branch is at the very top of the store, this will be `undefined`.
    */
-  private key: string;
+  public readonly key: string;
 
   /**
    * Reference to the StateLake-object at the top of the store.
    */
-  private top: StateLake<any>;
-
-  /**
-   * Relative path from the top of the store to this branch.
-   */
-  private path: string[];
+  public readonly top: StateLake<any>;
 
   /**
    * Unique id
@@ -151,7 +147,7 @@ export class StateLake<T extends IBase> {
     key?: StateLake<T>['key']
   ) {
     // Initialize parameter properties
-    this.state =
+    this.value =
       state && typeof state === 'function'
         ? (state as () => T)()
         : (state as T);
@@ -160,10 +156,6 @@ export class StateLake<T extends IBase> {
 
     // Initialize basic properties
     this.top = this.parent ? this.parent.top : this;
-    this.path = [
-      ...(this.parent?.getPath() || []),
-      ...(this.key ? [this.key] : [])
-    ];
 
     // Unique identifier
     this.id = StateLake.generateId();
@@ -206,50 +198,11 @@ export class StateLake<T extends IBase> {
   public static extractIdComponents = extractIdComponents;
 
   /**
-   * Get key.
-   *
-   * Returns the key that the parent of this branch uses to refer to it.
-   * If the branch is at the very top of the store, this will yield `undefined`.
+   * Trigger all hooks.
    */
-  public getKey() {
-    return this.key;
-  }
-
-  /**
-   * Get path.
-   *
-   * The path is a string array that represents the path from the top of the store,
-   * down to this branch.
-   */
-  public getPath() {
-    return this.path;
-  }
-
-  /**
-   * Get the unique identifier of this branch
-   */
-  public getId() {
-    return this.id;
-  }
-
-  /**
-   * Get parent
-   *
-   * Returns the parent of this branch.
-   * If the branch is at the very top of the store, this will yield `undefined`.
-   */
-  public getParent() {
-    return this.parent;
-  }
-
-  /**
-   * Get top
-   *
-   * Returns the top branch.
-   * If the current branch is the top, `this` branch will be returned.
-   */
-  public getTop() {
-    return this.top;
+  private triggerHooks() {
+    const count = counter();
+    this.hooks.forEach(hook => hook(count));
   }
 
   /**
@@ -259,17 +212,19 @@ export class StateLake<T extends IBase> {
    * If changes are made to the state object without using the StateLake api,
    * those changes won't be tracked by react.
    */
-  public getState() {
-    return this.state;
+  public get state() {
+    return this.value;
   }
 
   /**
-   * Get keys
-   *
-   * Return all keys of the current state object.
+   * Change state.
    */
-  public keys() {
-    return Object.keys(this.state) as string[];
+  private set state(state: T) {
+    // Set current state
+    this.value = state;
+
+    // Trigger hooks
+    this.triggerHooks();
   }
 
   /**
@@ -286,6 +241,15 @@ export class StateLake<T extends IBase> {
     this.hooks = this.hooks.filter(test => test !== hook);
     if (this.parent && this.hooks.length === 0 && nullish(this.state))
       this.parent.detachBranch(this);
+  }
+
+  /**
+   * Get keys
+   *
+   * Return all keys of the current state object.
+   */
+  public keys() {
+    return Object.keys(this.state) as string[];
   }
 
   /**
@@ -312,28 +276,9 @@ export class StateLake<T extends IBase> {
    * hook detached while it's state is undefined or null.
    */
   private detachBranch(branch: StateLake<T[Keys<T, T>]>) {
-    const { [branch.getKey() as Keys<T, T>]: remove_branch, ...new_branches } =
+    const { [branch.key as Keys<T, T>]: remove_branch, ...new_branches } =
       this.branches;
     this.branches = new_branches as StateLake<T>['branches'];
-  }
-
-  /**
-   * Trigger all hooks.
-   */
-  private triggerHooks() {
-    const count = counter();
-    this.hooks.forEach(hook => hook(count));
-  }
-
-  /**
-   * Change state.
-   */
-  private changeState(state: T) {
-    // Set current state
-    this.state = state;
-
-    // Trigger hooks
-    this.triggerHooks();
   }
 
   /**
@@ -344,23 +289,21 @@ export class StateLake<T extends IBase> {
    */
   private updateBranchState(branch: StateLake<T[Keys<T, T>]>) {
     // Helper variables
-    const got_key = this.state && branch?.getKey() in this.state;
-    const branch_state = branch.getState();
+    const got_key = this.state && branch?.key in this.state;
 
     // Does the state need to re-attach to parent state object?
     var add_or_remove = false;
 
     // Handle add/remove branch
-    if (branch_state === null) {
+    if (branch.state === null) {
       // Remove branch?
       if (got_key) {
         // Ensure re-attachment
         add_or_remove = true;
 
         // Change state
-        const { [branch.getKey()]: remove_state, ...new_state } =
-          this.getState();
-        this.changeState(new_state as any);
+        const { [branch.key]: remove_state, ...new_state } = this.state;
+        this.state = new_state as any;
 
         // Remove from branches
         this.detachBranch(branch);
@@ -372,10 +315,10 @@ export class StateLake<T extends IBase> {
         add_or_remove = true;
 
         // Change state
-        this.changeState({
+        this.state = {
           ...this.state,
-          [branch.getKey()]: branch.getState()
-        });
+          [branch.key]: branch.state
+        };
       }
     }
 
@@ -385,7 +328,7 @@ export class StateLake<T extends IBase> {
       if (this.parent) this.parent.updateBranchState(this);
     } else {
       // Mutate state object
-      this.state[branch.getKey() as Keys<T, T>] = branch.getState();
+      this.state[branch.key as Keys<T, T>] = branch.state;
     }
   }
 
@@ -405,7 +348,7 @@ export class StateLake<T extends IBase> {
     // Update
     if (do_update) {
       // Change state
-      this.changeState(state);
+      this.state = state;
 
       // Update parent state object
       if (this.parent && !parent_updated) this.parent.updateBranchState(this);
@@ -744,7 +687,7 @@ export class StateLake<T extends IBase> {
     filter?: (value: T[Keys<T, T>], key: string, idx: number) => boolean;
   } & Omit<P, 'branch' | 'parent'>) {
     // ID - Helps prevent duplicate keys in the dom
-    const id = useMemo(() => `${this.getId()}_${StateLake.generateId()}`, []);
+    const id = useMemo(() => `${this.id}_${StateLake.generateId()}`, []);
 
     // State
     const [stateKeys, state] = this.useKeys();
