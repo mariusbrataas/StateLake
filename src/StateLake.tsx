@@ -49,6 +49,16 @@ function MappedBranch<
 }
 
 /**
+ * Counter.
+ * Rather than storing the same state many times in multiple different hooks,
+ * every hook stores a copy of the same number, thus minimizing memory usage.
+ */
+const counter = (function () {
+  var count = 0;
+  return () => count++;
+})();
+
+/**
  * Return type of getBranch
  */
 export type GetBranch<T extends IBase> = StateLake<T>;
@@ -117,7 +127,7 @@ export class StateLake<T extends IBase> {
   /**
    * A list containing all hooks connected to this branch.
    */
-  private hooks: ((state: T) => void)[];
+  private hooks: ((state: number) => void)[];
 
   /**
    * References to all sub-branches of this branch.
@@ -311,7 +321,8 @@ export class StateLake<T extends IBase> {
    * Trigger all hooks.
    */
   private triggerHooks() {
-    this.hooks.forEach(hook => hook(this.state));
+    const count = counter();
+    this.hooks.forEach(hook => hook(count));
   }
 
   /**
@@ -599,15 +610,12 @@ export class StateLake<T extends IBase> {
     const branch = this.useBranch(...(path as EmptyPath));
 
     // Create hook
-    const [state, setState] = useState(branch.state);
+    const [, setState] = useState(branch.state);
 
     // Register hook
     useEffect(() => {
       // Attach hook
       branch.attachHook(setState);
-
-      // Update state on branch change
-      if (branch.state !== state) setState(branch.state);
 
       // Detach hook on component unmount
       return function cleanup() {
@@ -616,7 +624,7 @@ export class StateLake<T extends IBase> {
     }, [branch.id, setState]);
 
     // Return
-    return [state, branch.updateState, branch];
+    return [branch.state, branch.updateState, branch];
   }
 
   /**
@@ -722,6 +730,7 @@ export class StateLake<T extends IBase> {
     Component,
     keys: propKeys,
     sort,
+    filter,
     ...props
   }: {
     Component: (props: P) => JSX.Element;
@@ -732,6 +741,7 @@ export class StateLake<T extends IBase> {
       key_a: string,
       key_b: string
     ) => -1 | 0 | 1;
+    filter?: (value: T[Keys<T, T>], key: string, idx: number) => boolean;
   } & Omit<P, 'branch' | 'parent'>) {
     // ID - Helps prevent duplicate keys in the dom
     const id = useMemo(() => `${this.getId()}_${StateLake.generateId()}`, []);
@@ -741,19 +751,27 @@ export class StateLake<T extends IBase> {
     const keys = propKeys || stateKeys;
 
     // Helper: Sort keys
-    const sortKeys = () =>
-      sort
+    const sortKeys = () => {
+      const sorted = sort
         ? keys.sort((keyA, keyB) => sort(state[keyA], state[keyB], keyA, keyB))
         : keys;
+      return [sorted, sorted.join('')] as [string[], string];
+    };
 
     // Sorted keys
-    const sortedKeys = useMemo(sortKeys, [sort, keys.length, keys.join('')]);
+    const [sortedKeys, joinedKeys] = useMemo(sortKeys, [sort, keys.join('')]);
+
+    // Helper: Filter
+    const filt: (value: T[Keys<T, T>], key: string, idx: number) => boolean =
+      filter
+        ? (value, key, idx) => !nullish(value) && filter(value, key, idx)
+        : value => !nullish(value);
 
     // Helper: Create nodes
     const createNodes = () => (
       <>
-        {sortedKeys.map(key =>
-          nullish(state[key]) ? undefined : (
+        {sortedKeys.map((key, idx) =>
+          filt(state[key], key, idx) ? (
             <MappedBranch
               key={`${id}_${key}`}
               id={key}
@@ -761,15 +779,15 @@ export class StateLake<T extends IBase> {
               Component={Component}
               {...props}
             />
-          )
+          ) : undefined
         )}
       </>
     );
 
     // Memoized nodes
     return useMemo(createNodes, [
-      sortedKeys.length,
-      sortedKeys.join(''),
+      joinedKeys,
+      filt,
       ...Object.values(props || {})
     ]);
   }

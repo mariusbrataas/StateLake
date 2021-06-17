@@ -6,11 +6,12 @@
   "types": "build/index.d.ts",
   "scripts": {
     "clean": "rm -rf build",
-    "build": "tsc",
+    "build": "tsc && tsc -p ./tsconfig.nocomments.json && npm run minify",
     "cleanbuild": "npm run clean && npm run build",
     "bump": "npm version patch",
     "prepublishOnly": "npm run cleanbuild",
-    "postpublish": "npm run bump"
+    "postpublish": "npm run bump",
+    "minify": "cd build && echo 'Minifying' && for FILE in *.js; do echo ' -' $FILE && ../node_modules/minify/bin/minify.js $FILE > tmp_mini && cat tmp_mini > $FILE; done && rm tmp_mini && cd .."
   },
   "keywords": [],
   "author": "",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/react": ">=16.8",
+    "minify": "^7.0.2",
     "prettier": "^2.2.1",
     "react": ">=16.8"
   },

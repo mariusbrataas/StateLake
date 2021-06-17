@@ -3,7 +3,9 @@
     "**/.git": true,
     "**/.DS_Store": true,
     "**/node_modules": true,
-    "**/build": true
+    "**/build": true,
+    "**/package-lock.json": true,
+    "**/tsconfig.nocomments.json": true
   },
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
