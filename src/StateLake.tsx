@@ -111,11 +111,6 @@ export class StateLake<T extends IBase> {
   public readonly key: string;
 
   /**
-   * Reference to the StateLake-object at the top of the store.
-   */
-  public readonly top: StateLake<any>;
-
-  /**
    * Unique id
    */
   private id: string;
@@ -153,9 +148,6 @@ export class StateLake<T extends IBase> {
         : (state as T);
     this.parent = parent;
     this.key = key || '';
-
-    // Initialize basic properties
-    this.top = this.parent ? this.parent.top : this;
 
     // Unique identifier
     this.id = StateLake.generateId();
@@ -198,11 +190,10 @@ export class StateLake<T extends IBase> {
   public static extractIdComponents = extractIdComponents;
 
   /**
-   * Trigger all hooks.
+   * Reference to the StateLake-object at the top of the store.
    */
-  private triggerHooks() {
-    const count = counter();
-    this.hooks.forEach(hook => hook(count));
+  public get top(): StateLake<any> {
+    return this.parent ? this.parent.top : this;
   }
 
   /**
@@ -224,7 +215,8 @@ export class StateLake<T extends IBase> {
     this.value = state;
 
     // Trigger hooks
-    this.triggerHooks();
+    const count = counter();
+    this.hooks.forEach(hook => hook(count));
   }
 
   /**
@@ -248,7 +240,7 @@ export class StateLake<T extends IBase> {
    *
    * Return all keys of the current state object.
    */
-  public keys() {
+  public get keys() {
     return Object.keys(this.state) as string[];
   }
 
