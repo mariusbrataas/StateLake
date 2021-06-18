@@ -9,8 +9,7 @@
     "build": "tsc && tsc -p ./tsconfig.nocomments.json && npm run minify",
     "cleanbuild": "npm run clean && npm run build",
     "bump": "npm version patch",
-    "prepublishOnly": "npm run cleanbuild",
-    "postpublish": "npm run bump",
+    "prepublishOnly": "npm run cleanbuild && npm run bump",
     "minify": "cd build && echo 'Minifying' && for FILE in *.js; do echo ' -' $FILE && ../node_modules/minify/bin/minify.js $FILE > tmp_mini && cat tmp_mini > $FILE; done && rm tmp_mini && cd .."
   },
   "keywords": [],
