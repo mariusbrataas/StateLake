@@ -97,7 +97,7 @@ export class StateLake<T extends IBase> {
   /**
    * Current state
    */
-  private value: T;
+  private state: T;
 
   /**
    * Reference to parent of this branch (if any).
@@ -142,7 +142,7 @@ export class StateLake<T extends IBase> {
     key?: StateLake<T>['key']
   ) {
     // Initialize parameter properties
-    this.value =
+    this.state =
       state && typeof state === 'function'
         ? (state as () => T)()
         : (state as T);
@@ -192,8 +192,8 @@ export class StateLake<T extends IBase> {
   /**
    * Reference to the StateLake-object at the top of the store.
    */
-  public get top(): StateLake<any> {
-    return this.parent ? this.parent.top : this;
+  public top(): StateLake<any> {
+    return this.parent?.top() || this;
   }
 
   /**
@@ -203,16 +203,16 @@ export class StateLake<T extends IBase> {
    * If changes are made to the state object without using the StateLake api,
    * those changes won't be tracked by react.
    */
-  public get state() {
-    return this.value;
+  public getState() {
+    return this.state;
   }
 
   /**
    * Change state.
    */
-  private set state(state: T) {
+  private changeState(state: T) {
     // Set current state
-    this.value = state;
+    this.state = state;
 
     // Trigger hooks
     const count = counter();
@@ -240,7 +240,7 @@ export class StateLake<T extends IBase> {
    *
    * Return all keys of the current state object.
    */
-  public get keys() {
+  public keys() {
     return Object.keys(this.state) as string[];
   }
 
@@ -295,7 +295,7 @@ export class StateLake<T extends IBase> {
 
         // Change state
         const { [branch.key]: remove_state, ...new_state } = this.state;
-        this.state = new_state as any;
+        this.changeState(new_state as any);
 
         // Remove from branches
         this.detachBranch(branch);
@@ -307,10 +307,10 @@ export class StateLake<T extends IBase> {
         add_or_remove = true;
 
         // Change state
-        this.state = {
+        this.changeState({
           ...this.state,
           [branch.key]: branch.state
-        };
+        });
       }
     }
 
@@ -340,7 +340,7 @@ export class StateLake<T extends IBase> {
     // Update
     if (do_update) {
       // Change state
-      this.state = state;
+      this.changeState(state);
 
       // Update parent state object
       if (this.parent && !parent_updated) this.parent.updateBranchState(this);
