@@ -18,40 +18,52 @@ export interface IBase {
 }
 
 /**
+ * Mapped component properties
+ */
+export type MappedComponentProps<T extends IBase> = {
+  branch: StateLake<T[Keys<T, T>]>;
+  parent?: StateLake<T>;
+};
+
+/**
  * Empty path type
  */
 type EmptyPath = [any, any];
 
 /**
+ * Default filter function, used in `.Map`
+ */
+function defaultFilter(value: any): boolean {
+  return !nullish(value);
+}
+
+/**
  * Mapped branch
  */
-function MappedBranch<
-  T extends IBase,
-  P extends {
-    branch: StateLake<T[Keys<T, T>]>;
-    parent?: StateLake<T>;
-  }
->({
+function MappedBranch<T extends IBase, P extends MappedComponentProps<T>>({
   id,
   parent,
   Component,
-  ...props
+  additionalProps
 }: {
   id: string;
   parent: StateLake<T>;
   Component: (props: P) => JSX.Element;
+  additionalProps: Omit<P, 'branch' | 'parent'>;
 }) {
   // Branch
   const branch = parent.useBranch(id as Keys<T, T>);
 
   // Render
-  return <Component branch={branch} parent={parent} {...(props as any)} />;
+  return (
+    <Component branch={branch} parent={parent} {...(additionalProps as any)} />
+  );
 }
 
 /**
  * Counter.
  * Rather than storing the same state many times in multiple different hooks,
- * every hook stores a copy of the same number, minimizing memory usage.
+ * every hook stores a copy of the same number.
  */
 const counter = (function () {
   var count = Number.MIN_SAFE_INTEGER;
@@ -665,9 +677,7 @@ export class StateLake<T extends IBase> {
    * Efficiently map all sub-branches of a StateLake object, and pass the corresponding
    * branches to the given component.
    */
-  public Map<
-    P extends { branch: StateLake<T[Keys<T, T>]>; parent?: StateLake<T> }
-  >({
+  public Map<P extends MappedComponentProps<T>>({
     Component,
     keys: propKeys,
     sort,
@@ -684,51 +694,74 @@ export class StateLake<T extends IBase> {
     ) => -1 | 0 | 1;
     filter?: (value: T[Keys<T, T>], key: string, idx: number) => boolean;
   } & Omit<P, 'branch' | 'parent'>) {
-    // ID - Helps prevent duplicate keys in the dom
-    const id = useMemo(() => `${this.id}_${StateLake.generateId()}`, []);
+    // Identifier - Helps prevent duplicate keys in the dom
+    const identifier = useMemo(
+      () => `${this.id}_${StateLake.generateId()}`,
+      [this.id]
+    );
 
     // State
     const [stateKeys, state] = this.useKeys();
     const keys = propKeys || stateKeys;
 
-    // Helper: Sort keys
-    const sortKeys = () => {
-      const sorted = sort
-        ? keys.sort((keyA, keyB) => sort(state[keyA], state[keyB], keyA, keyB))
-        : keys;
-      return [sorted, sorted.join('')] as [string[], string];
+    // Filter
+    const filt = useMemo<
+      (value: T[Keys<T, T>], key: string, idx: number) => boolean
+    >(
+      () =>
+        filter
+          ? (value, key, idx) => defaultFilter(value) && filter(value, key, idx)
+          : defaultFilter,
+      [filter]
+    );
+
+    // Filter keys
+    const filterKeys: () => [string[], string] = () => {
+      const filtered = keys.filter((key, idx) => filt(state[key], key, idx));
+      return [filtered, filtered.join('')];
     };
+    const [filteredKeys, joinedFilteredKeys] = useMemo(filterKeys, [
+      filt,
+      keys.join('')
+    ]);
 
-    // Sorted keys
-    const [sortedKeys, joinedKeys] = useMemo(sortKeys, [sort, keys.join('')]);
-
-    // Helper: Filter
-    const filt: (value: T[Keys<T, T>], key: string, idx: number) => boolean =
-      filter
-        ? (value, key, idx) => !nullish(value) && filter(value, key, idx)
-        : value => !nullish(value);
+    // Sort keys
+    const sortKeys: () => [string[], string] = () => {
+      if (sort) {
+        const sorted = sort
+          ? filteredKeys.sort((keyA, keyB) =>
+              sort(state[keyA], state[keyB], keyA, keyB)
+            )
+          : filteredKeys;
+        return [sorted, sorted.join('')];
+      }
+      return [filteredKeys, joinedFilteredKeys];
+    };
+    const [sortedKeys, joinedSortedKeys] = useMemo(sortKeys, [
+      sort,
+      joinedFilteredKeys
+    ]);
 
     // Helper: Create nodes
     const createNodes = () => (
       <>
-        {sortedKeys.map((key, idx) =>
-          filt(state[key], key, idx) ? (
-            <MappedBranch
-              key={`${id}_${key}`}
-              id={key}
-              parent={this}
-              Component={Component}
-              {...props}
-            />
-          ) : undefined
-        )}
+        {sortedKeys.map(key => (
+          <MappedBranch
+            key={`${identifier}_${key}`}
+            id={key}
+            parent={this}
+            Component={Component}
+            additionalProps={props as any}
+          />
+        ))}
       </>
     );
 
     // Memoized nodes
     return useMemo(createNodes, [
-      joinedKeys,
-      filt,
+      identifier,
+      Component,
+      joinedSortedKeys,
       ...Object.values(props || {})
     ]);
   }
