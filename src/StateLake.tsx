@@ -51,11 +51,14 @@ function MappedBranch<
 /**
  * Counter.
  * Rather than storing the same state many times in multiple different hooks,
- * every hook stores a copy of the same number, thus minimizing memory usage.
+ * every hook stores a copy of the same number, minimizing memory usage.
  */
 const counter = (function () {
-  var count = 0;
-  return () => count++;
+  var count = Number.MIN_SAFE_INTEGER;
+  return () =>
+    count < Number.MAX_SAFE_INTEGER
+      ? (count += 1)
+      : (count = Number.MIN_SAFE_INTEGER);
 })();
 
 /**
@@ -652,7 +655,10 @@ export class StateLake<T extends IBase> {
     const [state, _setState, branch] = this.useState(...(path as EmptyPath));
 
     // Return memoized keys
-    return useMemo(() => [Object.keys(state || {}), state, branch], [state]);
+    return useMemo(
+      () => [state ? Object.keys(state) : [], state, branch],
+      [state]
+    );
   }
 
   /**
