@@ -1,15 +1,4 @@
 /**
- * Automatically bind all class methods to object
- *
- * @param obj - The "this" keyword in a class constructor
- */
-export function autoBind(obj: any) {
-  Object.getOwnPropertyNames(Object.getPrototypeOf(obj))
-    .filter(method => method !== 'constructor')
-    .forEach(method => (obj[method] = obj[method].bind(obj)));
-}
-
-/**
  * Tokens.
  * Used for generating IDs and numbers of different bases.
  */
