@@ -229,8 +229,8 @@ export class StateLake<T extends IBase> {
    *
    * Return all keys of the current state object.
    */
-  public keys() {
-    return Object.keys(this.state) as string[];
+  public keys(): string[] {
+    return Object.keys(this.state);
   }
 
   /**
@@ -240,23 +240,16 @@ export class StateLake<T extends IBase> {
    * given path. Missing branches will be created along the way.
    */
   private ensureBranch([prop, ...path]: string[]): StateLake<any> {
-    if (prop === undefined) return this;
-    return (
-      (this.branches[prop as Keys<T, T>] =
-        this.branches[prop as Keys<T, T>] ||
-        new StateLake(this.state && this.state[prop], this, prop)) as StateLake<
-        T[Keys<T, T>]
-      >
-    ).ensureBranch(path);
-  }
-
-  /**
-   * Detach branch.
-   */
-  private detachBranch(branch: StateLake<T[Keys<T, T>]>) {
-    const { [branch.key as Keys<T, T>]: remove_branch, ...new_branches } =
-      this.branches;
-    this.branches = new_branches as StateLake<T>['branches'];
+    return prop === undefined
+      ? this
+      : (
+          (this.branches[prop as Keys<T, T>] ||
+            (this.branches[prop as Keys<T, T>] = new StateLake(
+              this.state && this.state[prop],
+              this,
+              prop
+            ))) as StateLake<T[Keys<T, T>]>
+        ).ensureBranch(path);
   }
 
   /**
@@ -284,7 +277,9 @@ export class StateLake<T extends IBase> {
         this.changeState(new_state as any);
 
         // Remove from branches
-        this.detachBranch(branch);
+        const { [branch.key as Keys<T, T>]: remove_branch, ...new_branches } =
+          this.branches;
+        this.branches = new_branches as StateLake<T>['branches'];
       }
     } else {
       // Add branch?
