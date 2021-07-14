@@ -33,6 +33,7 @@ export interface IBase {
 export type MappedComponentProps<T extends IBase> = {
   branch: StateLake<T[Keys<T, T>]>;
   parent?: StateLake<T>;
+  idx: number;
 };
 
 /**
@@ -51,11 +52,13 @@ function defaultFilter(value: any): boolean {
  * Mapped branch
  */
 function MappedBranch<T extends IBase, P extends MappedComponentProps<T>>({
+  idx,
   id,
   parent,
   Component,
   additionalProps
 }: {
+  idx: number;
   id: string;
   parent: StateLake<T>;
   Component: (props: P) => JSX.Element;
@@ -66,7 +69,12 @@ function MappedBranch<T extends IBase, P extends MappedComponentProps<T>>({
 
   // Render
   return (
-    <Component branch={branch} parent={parent} {...(additionalProps as any)} />
+    <Component
+      branch={branch}
+      parent={parent}
+      idx={idx}
+      {...(additionalProps as any)}
+    />
   );
 }
 
@@ -708,9 +716,10 @@ export class StateLake<T extends IBase> {
     // Helper: Create nodes
     const createNodes = () => (
       <>
-        {sortedKeys.map(key => (
+        {sortedKeys.map((key, idx) => (
           <MappedBranch
             key={`${identifier}_${key}`}
+            idx={idx}
             id={key}
             parent={this}
             Component={Component}
