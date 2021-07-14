@@ -667,7 +667,7 @@ export class StateLake<T extends IBase> {
       key_b: string
     ) => -1 | 0 | 1;
     filter?: (value: T[Keys<T, T>], key: string, idx: number) => boolean;
-  } & Omit<P, 'branch' | 'parent'>) {
+  } & Omit<P, 'branch' | 'parent' | 'idx'>) {
     // Identifier - Helps prevent duplicate keys in the dom
     const identifier = useMemo(() => `${this.id}_${generateId()}`, [this.id]);
 
