@@ -62,7 +62,7 @@ function MappedBranch<T extends IBase, P extends MappedComponentProps<T>>({
   id: string;
   parent: StateLake<T>;
   Component: (props: P) => JSX.Element;
-  additionalProps: Omit<P, 'branch' | 'parent'>;
+  additionalProps: Omit<P, 'branch' | 'parent' | 'idx'>;
 }) {
   // Branch
   const branch = parent.useBranch(id as Keys<T, T>);
