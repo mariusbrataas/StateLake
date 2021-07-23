@@ -32,7 +32,7 @@ export interface IBase {
  */
 export type MappedComponentProps<T extends IBase> = {
   branch: StateLake<T[Keys<T, T>]>;
-  parent?: StateLake<T>;
+  parent: StateLake<T>;
   idx: number;
 };
 
@@ -51,7 +51,7 @@ function defaultFilter(value: any): boolean {
 /**
  * Mapped branch
  */
-function MappedBranch<T extends IBase, P extends MappedComponentProps<T>>({
+function MappedBranch<T extends IBase, P>({
   idx,
   id,
   parent,
@@ -61,8 +61,8 @@ function MappedBranch<T extends IBase, P extends MappedComponentProps<T>>({
   idx: number;
   id: string;
   parent: StateLake<T>;
-  Component: (props: P) => JSX.Element;
-  additionalProps: Omit<P, 'branch' | 'parent' | 'idx'>;
+  Component: (props: P & MappedComponentProps<T>) => JSX.Element;
+  additionalProps: Omit<P, keyof MappedComponentProps<T>>;
 }) {
   // Branch
   const branch = parent.useBranch(id as Keys<T, T>);
@@ -382,16 +382,6 @@ export class StateLake<T extends IBase> {
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
   >(k0: K0, k1: K1, k2: K2, k3: K3): GetBranch<T[K0][K1][K2][K3]>;
-  public getBranch<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
-  >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): GetBranch<T[K0][K1][K2][K3][K4]>;
   public getBranch(...path: string[]) {
     return this.ensureBranch(path);
   }
@@ -435,16 +425,6 @@ export class StateLake<T extends IBase> {
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
   >(k0: K0, k1: K1, k2: K2, k3: K3): SetState<T[K0][K1][K2][K3]>;
-  public setState<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
-  >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): SetState<T[K0][K1][K2][K3][K4]>;
   public setState(...path: string[]) {
     return this.getBranch(...(path as EmptyPath)).updateState;
   }
@@ -474,16 +454,6 @@ export class StateLake<T extends IBase> {
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
   >(k0: K0, k1: K1, k2: K2, k3: K3): UseBranch<T[K0][K1][K2][K3]>;
-  public useBranch<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
-  >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseBranch<T[K0][K1][K2][K3][K4]>;
   public useBranch(...path: string[]) {
     return useMemo(
       () => this.getBranch(...(path as EmptyPath)),
@@ -519,16 +489,6 @@ export class StateLake<T extends IBase> {
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
   >(k0: K0, k1: K1, k2: K2, k3: K3): UseState<T[K0][K1][K2][K3]>;
-  public useState<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
-  >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseState<T[K0][K1][K2][K3][K4]>;
   public useState(...path: string[]) {
     // Reference branch
     const branch = this.useBranch(...(path as EmptyPath));
@@ -576,16 +536,6 @@ export class StateLake<T extends IBase> {
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
   >(k0: K0, k1: K1, k2: K2, k3: K3): UseEffect<T[K0][K1][K2][K3]>;
-  public useEffect<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
-  >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseEffect<T[K0][K1][K2][K3][K4]>;
   public useEffect(...path: string[]) {
     // Current state
     const [state, setState, branch] = this.useState(...(path as EmptyPath));
@@ -626,16 +576,6 @@ export class StateLake<T extends IBase> {
     K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
     K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
   >(k0: K0, k1: K1, k2: K2, k3: K3): UseKeys<T[K0][K1][K2][K3]>;
-  public useKeys<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>,
-    K4 extends Keys<
-      T[K0][K1][K2][K3],
-      T | T[K0] | T[K0][K1] | T[K0][K1][K2] | T[K0][K1][K2][K3]
-    >
-  >(k0: K0, k1: K1, k2: K2, k3: K3, k4: K4): UseKeys<T[K0][K1][K2][K3][K4]>;
   public useKeys(...path: string[]) {
     // Current state
     const [state, _setState, branch] = this.useState(...(path as EmptyPath));
@@ -651,14 +591,14 @@ export class StateLake<T extends IBase> {
    * Efficiently map all sub-branches of a StateLake object, and pass the corresponding
    * branches to the given component.
    */
-  public Map<P extends MappedComponentProps<T>>({
+  public Map<P>({
     Component,
-    keys: propKeys,
+    keys,
     sort,
     filter,
     ...props
   }: {
-    Component: (props: P) => JSX.Element;
+    Component: (props: P & MappedComponentProps<T>) => JSX.Element;
     keys?: string[];
     sort?: (
       value_a: T[Keys<T, T>],
@@ -667,13 +607,13 @@ export class StateLake<T extends IBase> {
       key_b: string
     ) => -1 | 0 | 1;
     filter?: (value: T[Keys<T, T>], key: string, idx: number) => boolean;
-  } & Omit<P, 'branch' | 'parent' | 'idx'>) {
+  } & Omit<P, keyof MappedComponentProps<T>>) {
     // Identifier - Helps prevent duplicate keys in the dom
     const identifier = useMemo(() => `${this.id}_${generateId()}`, [this.id]);
 
     // State
     const [stateKeys, state] = this.useKeys();
-    const keys = propKeys || stateKeys;
+    const selectedKeys = keys || stateKeys;
 
     // Filter
     const filt = useMemo<
@@ -688,12 +628,14 @@ export class StateLake<T extends IBase> {
 
     // Filter keys
     const filterKeys: () => [string[], string] = () => {
-      const filtered = keys.filter((key, idx) => filt(state[key], key, idx));
+      const filtered = selectedKeys.filter((key, idx) =>
+        filt(state[key], key, idx)
+      );
       return [filtered, filtered.join('')];
     };
     const [filteredKeys, joinedFilteredKeys] = useMemo(filterKeys, [
       filt,
-      keys.join('')
+      selectedKeys.join('')
     ]);
 
     // Sort keys
