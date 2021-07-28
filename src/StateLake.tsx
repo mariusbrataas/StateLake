@@ -2,12 +2,36 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { generateId, nullish } from './utils';
 
 /**
- * Automatically bind all class methods to object
+ * Automatically bind all class methods to object.
+ *
+ * Both the the `this` keyword, and the class prototype, must be provided, like so:
+ *
+ * ```ts
+ * // ...inside constructor
+ * autoBind(this, MyClass.prototype)
+ * ```
+ *
+ * Here's an example:
+ *
+ * @example
+ * class MyClass {
+ *   private message: string;
+ *
+ *   constructor(message: string) {
+ *     this.message = message;
+ *     autoBind(this, MyClass.prototype);
+ *   }
+ *
+ *   public print() {
+ *     console.log(this.message);
+ *   }
+ * }
+ *
  */
-function autoBind(obj: any) {
-  Object.getOwnPropertyNames(Object.getPrototypeOf(obj)).forEach(method => {
-    if (method === 'constructor') return;
-    obj[method] = obj[method].bind(obj);
+export function autoBind(instance: any, proto: any) {
+  Object.getOwnPropertyNames(proto).forEach(method => {
+    if (!(typeof proto[method] === 'function')) return;
+    instance[method] = proto[method].bind(instance);
   });
 }
 
@@ -192,7 +216,7 @@ export class StateLake<T extends IBase> {
     this.branches = {};
 
     // Bind class methods
-    autoBind(this);
+    autoBind(this, StateLake.prototype);
   }
 
   /**
