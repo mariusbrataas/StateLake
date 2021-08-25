@@ -1,39 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { generateId, nullish } from './utils';
-
-/**
- * Automatically bind all class methods to object.
- *
- * Both the the `this` keyword, and the class prototype, must be provided, like so:
- *
- * ```ts
- * // ...inside constructor
- * autoBind(this, MyClass.prototype)
- * ```
- *
- * Here's an example:
- *
- * @example
- * class MyClass {
- *   private message: string;
- *
- *   constructor(message: string) {
- *     this.message = message;
- *     autoBind(this, MyClass.prototype);
- *   }
- *
- *   public print() {
- *     console.log(this.message);
- *   }
- * }
- *
- */
-export function autoBind(instance: any, proto: any) {
-  Object.getOwnPropertyNames(proto).forEach(method => {
-    if (!(typeof proto[method] === 'function')) return;
-    instance[method] = proto[method].bind(instance);
-  });
-}
+import { autoBind, generateId, nullish } from './utils';
 
 /**
  * Get all available keys on type
@@ -58,62 +24,13 @@ export type MappedComponentProps<T extends IBase> = {
   branch: StateLake<T[Keys<T, T>]>;
   parent: StateLake<T>;
   idx: number;
+  keys: string[];
 };
 
 /**
  * Empty path type
  */
 type EmptyPath = [any, any];
-
-/**
- * Default filter function, used in `.Map`
- */
-function defaultFilter(value: any): boolean {
-  return !nullish(value);
-}
-
-/**
- * Mapped branch
- */
-function MappedBranch<T extends IBase, P>({
-  idx,
-  id,
-  parent,
-  Component,
-  additionalProps
-}: {
-  idx: number;
-  id: string;
-  parent: StateLake<T>;
-  Component: (props: P & MappedComponentProps<T>) => JSX.Element;
-  additionalProps: Omit<P, keyof MappedComponentProps<T>>;
-}) {
-  // Branch
-  const branch = parent.useBranch(id as Keys<T, T>);
-
-  // Render
-  return (
-    <Component
-      branch={branch}
-      parent={parent}
-      idx={idx}
-      {...(additionalProps as any)}
-    />
-  );
-}
-
-/**
- * Counter.
- * Rather than storing the same state many times in multiple different hooks,
- * every hook stores a copy of the same number.
- */
-const counter = (function () {
-  var count = Number.MIN_SAFE_INTEGER;
-  return () =>
-    count < Number.MAX_SAFE_INTEGER
-      ? (count += 1)
-      : (count = Number.MIN_SAFE_INTEGER);
-})();
 
 /**
  * Return type of getBranch
@@ -146,6 +63,59 @@ export type UseEffect<T extends IBase> = (
  * Return type of useKeys
  */
 export type UseKeys<T extends IBase> = [string[], T, StateLake<T>];
+
+/**
+ * Default filter function, used in `.Map`
+ */
+function defaultFilter(value: any): boolean {
+  return !nullish(value);
+}
+
+/**
+ * Mapped branch
+ */
+function MappedBranch<T extends IBase, P>({
+  idx,
+  id,
+  parent,
+  Component,
+  additionalProps,
+  keys
+}: {
+  idx: number;
+  id: string;
+  parent: StateLake<T>;
+  Component: (props: P & MappedComponentProps<T>) => JSX.Element;
+  additionalProps: Omit<P, keyof MappedComponentProps<T>>;
+  keys: string[];
+}) {
+  // Branch
+  const branch = parent.useBranch(id as Keys<T, T>);
+
+  // Render
+  return (
+    <Component
+      branch={branch}
+      parent={parent}
+      idx={idx}
+      keys={keys}
+      {...(additionalProps as any)}
+    />
+  );
+}
+
+/**
+ * Counter.
+ * Rather than storing the same state many times in multiple different hooks,
+ * every hook stores a copy of the same number.
+ */
+const counter = (function () {
+  var count = 0;
+  return () =>
+    count < Number.MAX_SAFE_INTEGER
+      ? (count += 1)
+      : (count = Number.MIN_SAFE_INTEGER);
+})();
 
 /**
  * StateLake class
@@ -682,13 +652,14 @@ export class StateLake<T extends IBase> {
     // Helper: Create nodes
     const createNodes = () => (
       <>
-        {sortedKeys.map((key, idx) => (
+        {sortedKeys.map((key, idx, keys) => (
           <MappedBranch
             key={`${identifier}_${key}`}
             idx={idx}
             id={key}
             parent={this}
             Component={Component}
+            keys={keys}
             additionalProps={props as any}
           />
         ))}

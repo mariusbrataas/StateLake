@@ -1,2 +1,2 @@
 export { StateLake as default, StateLake } from './StateLake';
-export { extractIdComponents, generateId } from './utils';
+export { autoBind, extractIdComponents, generateId } from './utils';

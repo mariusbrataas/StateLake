@@ -1,4 +1,38 @@
 /**
+ * Automatically bind all class methods to object.
+ *
+ * Both the the `this` keyword, and the class prototype, must be provided, like so:
+ *
+ * ```ts
+ * // ...inside constructor
+ * autoBind(this, MyClass.prototype)
+ * ```
+ *
+ * Here's an example:
+ *
+ * @example
+ * class MyClass {
+ *   private message: string;
+ *
+ *   constructor(message: string) {
+ *     this.message = message;
+ *     autoBind(this, MyClass.prototype);
+ *   }
+ *
+ *   public print() {
+ *     console.log(this.message);
+ *   }
+ * }
+ *
+ */
+export function autoBind(instance: any, proto: any) {
+  Object.getOwnPropertyNames(proto).forEach(method => {
+    if (!(typeof proto[method] === 'function')) return;
+    instance[method] = proto[method].bind(instance);
+  });
+}
+
+/**
  * Tokens.
  * Used for generating IDs and numbers of different bases.
  */
@@ -25,7 +59,7 @@ function getRandomTokens(n = 4) {
 /**
  * Convert number from base to base
  */
-export function convertBase(
+function convertBase(
   value: number | string,
   from_base: number = 10,
   to_base: number = TOKENS.length
