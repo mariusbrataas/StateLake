@@ -2,6 +2,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { autoBind, generateId, nullish } from './utils';
 
 /**
+ * Ensure object contains no partials
+ */
+type NoPartials<T> = {
+  [key in keyof T]-?: NoPartials<T[key]>;
+};
+
+/**
+ * If a type cannot be inferred, assume it's potentially undefined
+ */
+type Maybe<T, C> = unknown extends T ? C | undefined : T;
+
+/**
  * Get all available keys on type
  */
 export type Keys<T, C> = C extends any[]
@@ -13,9 +25,11 @@ export type Keys<T, C> = C extends any[]
 /**
  * Basic state structure
  */
-export interface IBase {
-  [key: string]: any;
-}
+export type IBase =
+  | {
+      [key: string]: any;
+    }
+  | undefined;
 
 /**
  * Mapped component properties
@@ -232,7 +246,7 @@ export class StateLake<T extends IBase> {
    * Return all keys of the current state object.
    */
   public keys(): string[] {
-    return Object.keys(this.state);
+    return this.state && Object.keys(this.state);
   }
 
   /**
@@ -275,7 +289,7 @@ export class StateLake<T extends IBase> {
         add_or_remove = true;
 
         // Change state
-        const { [branch.key]: remove_state, ...new_state } = this.state;
+        const { [branch.key]: remove_state, ...new_state } = this.state || {};
         this.changeState(new_state as any);
 
         // Remove from branches
@@ -359,23 +373,58 @@ export class StateLake<T extends IBase> {
    *
    * @param {String} path Relative path of branch
    */
-  public getBranch(): GetBranch<T>;
-  public getBranch<K0 extends Keys<T, T>>(k0: K0): GetBranch<T[K0]>;
-  public getBranch<K0 extends Keys<T, T>, K1 extends Keys<T[K0], T | T[K0]>>(
+  public getBranch(): GetBranch<Maybe<T, T>>;
+  public getBranch<K0 extends Keys<T, T>>(
+    k0: K0
+  ): GetBranch<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
+  public getBranch<
+    K0 extends Keys<T, T>,
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
+  >(
     k0: K0,
     k1: K1
-  ): GetBranch<T[K0][K1]>;
+  ): GetBranch<
+    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
+  >;
   public getBranch<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>
-  >(k0: K0, k1: K1, k2: K2): GetBranch<T[K0][K1][K2]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2
+  ): GetBranch<
+    Maybe<
+      NonNullable<T>[K0][K1][K2],
+      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
+    >
+  >;
   public getBranch<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
-  >(k0: K0, k1: K1, k2: K2, k3: K3): GetBranch<T[K0][K1][K2][K3]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >,
+    K3 extends Keys<
+      NoPartials<T>[K0][K1][K2],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2,
+    k3: K3
+  ): GetBranch<
+    Maybe<
+      NonNullable<T>[K0][K1][K2][K3],
+      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
+    >
+  >;
   public getBranch(...path: string[]) {
     return this.ensureBranch(path);
   }
@@ -402,23 +451,58 @@ export class StateLake<T extends IBase> {
    *   year: 1962
    * });
    */
-  public setState(): SetState<T>;
-  public setState<K0 extends Keys<T, T>>(k0: K0): SetState<T[K0]>;
-  public setState<K0 extends Keys<T, T>, K1 extends Keys<T[K0], T | T[K0]>>(
+  public setState(): SetState<Maybe<T, T>>;
+  public setState<K0 extends Keys<T, T>>(
+    k0: K0
+  ): SetState<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
+  public setState<
+    K0 extends Keys<T, T>,
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
+  >(
     k0: K0,
     k1: K1
-  ): SetState<T[K0][K1]>;
+  ): SetState<
+    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
+  >;
   public setState<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>
-  >(k0: K0, k1: K1, k2: K2): SetState<T[K0][K1][K2]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2
+  ): SetState<
+    Maybe<
+      NonNullable<T>[K0][K1][K2],
+      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
+    >
+  >;
   public setState<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
-  >(k0: K0, k1: K1, k2: K2, k3: K3): SetState<T[K0][K1][K2][K3]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >,
+    K3 extends Keys<
+      NoPartials<T>[K0][K1][K2],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2,
+    k3: K3
+  ): SetState<
+    Maybe<
+      NonNullable<T>[K0][K1][K2][K3],
+      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
+    >
+  >;
   public setState(...path: string[]) {
     return this.getBranch(...(path as EmptyPath)).updateState;
   }
@@ -431,26 +515,61 @@ export class StateLake<T extends IBase> {
    *
    * @param {String} path Relative path of branch
    */
-  public useBranch(): UseBranch<T>;
-  public useBranch<K0 extends Keys<T, T>>(k0: K0): UseBranch<T[K0]>;
-  public useBranch<K0 extends Keys<T, T>, K1 extends Keys<T[K0], T | T[K0]>>(
+  public useBranch(): UseBranch<Maybe<T, T>>;
+  public useBranch<K0 extends Keys<T, T>>(
+    k0: K0
+  ): UseBranch<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
+  public useBranch<
+    K0 extends Keys<T, T>,
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
+  >(
     k0: K0,
     k1: K1
-  ): UseBranch<T[K0][K1]>;
+  ): UseBranch<
+    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
+  >;
   public useBranch<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>
-  >(k0: K0, k1: K1, k2: K2): UseBranch<T[K0][K1][K2]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2
+  ): UseBranch<
+    Maybe<
+      NonNullable<T>[K0][K1][K2],
+      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
+    >
+  >;
   public useBranch<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
-  >(k0: K0, k1: K1, k2: K2, k3: K3): UseBranch<T[K0][K1][K2][K3]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >,
+    K3 extends Keys<
+      NoPartials<T>[K0][K1][K2],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2,
+    k3: K3
+  ): UseBranch<
+    Maybe<
+      NonNullable<T>[K0][K1][K2][K3],
+      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
+    >
+  >;
   public useBranch(...path: string[]) {
     return useMemo(
-      () => this.getBranch(...(path as EmptyPath)),
+      () => this.getBranch(...(path as EmptyPath)) as any,
       [this.id, ...path]
     );
   }
@@ -466,29 +585,64 @@ export class StateLake<T extends IBase> {
    * @example
    * const [car, setCar] = store.useState("car");
    */
-  public useState(): UseState<T>;
-  public useState<K0 extends Keys<T, T>>(k0: K0): UseState<T[K0]>;
-  public useState<K0 extends Keys<T, T>, K1 extends Keys<T[K0], T | T[K0]>>(
+  public useState(): UseState<Maybe<T, T>>;
+  public useState<K0 extends Keys<T, T>>(
+    k0: K0
+  ): UseState<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
+  public useState<
+    K0 extends Keys<T, T>,
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
+  >(
     k0: K0,
     k1: K1
-  ): UseState<T[K0][K1]>;
+  ): UseState<
+    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
+  >;
   public useState<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>
-  >(k0: K0, k1: K1, k2: K2): UseState<T[K0][K1][K2]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2
+  ): UseState<
+    Maybe<
+      NonNullable<T>[K0][K1][K2],
+      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
+    >
+  >;
   public useState<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
-  >(k0: K0, k1: K1, k2: K2, k3: K3): UseState<T[K0][K1][K2][K3]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >,
+    K3 extends Keys<
+      NoPartials<T>[K0][K1][K2],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2,
+    k3: K3
+  ): UseState<
+    Maybe<
+      NonNullable<T>[K0][K1][K2][K3],
+      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
+    >
+  >;
   public useState(...path: string[]) {
     // Reference branch
-    const branch = this.useBranch(...(path as EmptyPath));
+    const branch = this.useBranch(...(path as EmptyPath)) as StateLake<any>;
 
     // Create hook
-    const setState = useState(branch.state)[1];
+    const setState = useState(counter)[1];
 
     // Register hook
     useEffect(() => {
@@ -513,23 +667,58 @@ export class StateLake<T extends IBase> {
    *
    * @param {String} path Relative path of branch
    */
-  public useEffect(): UseEffect<T>;
-  public useEffect<K0 extends Keys<T, T>>(k0: K0): UseEffect<T[K0]>;
-  public useEffect<K0 extends Keys<T, T>, K1 extends Keys<T[K0], T | T[K0]>>(
+  public useEffect(): UseEffect<Maybe<T, T>>;
+  public useEffect<K0 extends Keys<T, T>>(
+    k0: K0
+  ): UseEffect<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
+  public useEffect<
+    K0 extends Keys<T, T>,
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
+  >(
     k0: K0,
     k1: K1
-  ): UseEffect<T[K0][K1]>;
+  ): UseEffect<
+    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
+  >;
   public useEffect<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>
-  >(k0: K0, k1: K1, k2: K2): UseEffect<T[K0][K1][K2]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2
+  ): UseEffect<
+    Maybe<
+      NonNullable<T>[K0][K1][K2],
+      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
+    >
+  >;
   public useEffect<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
-  >(k0: K0, k1: K1, k2: K2, k3: K3): UseEffect<T[K0][K1][K2][K3]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >,
+    K3 extends Keys<
+      NoPartials<T>[K0][K1][K2],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2,
+    k3: K3
+  ): UseEffect<
+    Maybe<
+      NonNullable<T>[K0][K1][K2][K3],
+      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
+    >
+  >;
   public useEffect(...path: string[]) {
     // Current state
     const [state, setState, branch] = this.useState(...(path as EmptyPath));
@@ -553,26 +742,63 @@ export class StateLake<T extends IBase> {
    *
    * @param {String} path Relative path of branch
    */
-  public useKeys(): UseKeys<T>;
-  public useKeys<K0 extends Keys<T, T>>(k0: K0): UseKeys<T[K0]>;
-  public useKeys<K0 extends Keys<T, T>, K1 extends Keys<T[K0], T | T[K0]>>(
+  public useKeys(): UseKeys<Maybe<T, T>>;
+  public useKeys<K0 extends Keys<T, T>>(
+    k0: K0
+  ): UseKeys<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
+  public useKeys<
+    K0 extends Keys<T, T>,
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
+  >(
     k0: K0,
     k1: K1
-  ): UseKeys<T[K0][K1]>;
+  ): UseKeys<
+    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
+  >;
   public useKeys<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>
-  >(k0: K0, k1: K1, k2: K2): UseKeys<T[K0][K1][K2]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2
+  ): UseKeys<
+    Maybe<
+      NonNullable<T>[K0][K1][K2],
+      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
+    >
+  >;
   public useKeys<
     K0 extends Keys<T, T>,
-    K1 extends Keys<T[K0], T | T[K0]>,
-    K2 extends Keys<T[K0][K1], T | T[K0] | T[K0][K1]>,
-    K3 extends Keys<T[K0][K1][K2], T | T[K0] | T[K0][K1] | T[K0][K1][K2]>
-  >(k0: K0, k1: K1, k2: K2, k3: K3): UseKeys<T[K0][K1][K2][K3]>;
+    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
+    K2 extends Keys<
+      NoPartials<T>[K0][K1],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
+    >,
+    K3 extends Keys<
+      NoPartials<T>[K0][K1][K2],
+      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
+    >
+  >(
+    k0: K0,
+    k1: K1,
+    k2: K2,
+    k3: K3
+  ): UseKeys<
+    Maybe<
+      NonNullable<T>[K0][K1][K2][K3],
+      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
+    >
+  >;
   public useKeys(...path: string[]) {
     // Current state
-    const [state, _setState, branch] = this.useState(...(path as EmptyPath));
+    const [state, _setState, branch] = this.useState(
+      ...(path as EmptyPath)
+    ) as UseState<any>;
 
     // Return memoized keys
     return useMemo(
@@ -622,10 +848,13 @@ export class StateLake<T extends IBase> {
 
     // Filter keys
     const filterKeys: () => [string[], string] = () => {
-      const filtered = selectedKeys.filter((key, idx) =>
-        filt(state[key], key, idx)
-      );
-      return [filtered, filtered.join('')];
+      if (state) {
+        const filtered = selectedKeys.filter((key, idx) =>
+          filt(state[key], key, idx)
+        );
+        return [filtered, filtered.join('')];
+      }
+      return [[], ''];
     };
     const [filteredKeys, joinedFilteredKeys] = useMemo(filterKeys, [
       filt,
@@ -635,11 +864,9 @@ export class StateLake<T extends IBase> {
     // Sort keys
     const sortKeys: () => [string[], string] = () => {
       if (sort) {
-        const sorted = sort
-          ? filteredKeys.sort((keyA, keyB) =>
-              sort(state[keyA], state[keyB], keyA, keyB)
-            )
-          : filteredKeys;
+        const sorted = filteredKeys.sort((keyA, keyB) =>
+          sort(state?.[keyA], state?.[keyB], keyA, keyB)
+        );
         return [sorted, sorted.join('')];
       }
       return [filteredKeys, joinedFilteredKeys];
