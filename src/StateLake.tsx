@@ -374,7 +374,7 @@ export class StateLake<T extends IBase> {
    * @param {String} path Relative path of branch
    */
   public getBranch(): GetBranch<Maybe<T, T>>;
-  public getBranch<K0 extends Keys<T, T>>(
+  public getBranch<K0 extends Keys<NonNullable<T>, T>>(
     k0: K0
   ): GetBranch<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
   public getBranch<
@@ -452,7 +452,7 @@ export class StateLake<T extends IBase> {
    * });
    */
   public setState(): SetState<Maybe<T, T>>;
-  public setState<K0 extends Keys<T, T>>(
+  public setState<K0 extends Keys<NonNullable<T>, T>>(
     k0: K0
   ): SetState<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
   public setState<
@@ -516,7 +516,7 @@ export class StateLake<T extends IBase> {
    * @param {String} path Relative path of branch
    */
   public useBranch(): UseBranch<Maybe<T, T>>;
-  public useBranch<K0 extends Keys<T, T>>(
+  public useBranch<K0 extends Keys<NonNullable<T>, T>>(
     k0: K0
   ): UseBranch<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
   public useBranch<
@@ -586,7 +586,7 @@ export class StateLake<T extends IBase> {
    * const [car, setCar] = store.useState("car");
    */
   public useState(): UseState<Maybe<T, T>>;
-  public useState<K0 extends Keys<T, T>>(
+  public useState<K0 extends Keys<NonNullable<T>, T>>(
     k0: K0
   ): UseState<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
   public useState<
@@ -668,7 +668,7 @@ export class StateLake<T extends IBase> {
    * @param {String} path Relative path of branch
    */
   public useEffect(): UseEffect<Maybe<T, T>>;
-  public useEffect<K0 extends Keys<T, T>>(
+  public useEffect<K0 extends Keys<NonNullable<T>, T>>(
     k0: K0
   ): UseEffect<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
   public useEffect<
@@ -743,7 +743,7 @@ export class StateLake<T extends IBase> {
    * @param {String} path Relative path of branch
    */
   public useKeys(): UseKeys<Maybe<T, T>>;
-  public useKeys<K0 extends Keys<T, T>>(
+  public useKeys<K0 extends Keys<NonNullable<T>, T>>(
     k0: K0
   ): UseKeys<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
   public useKeys<
