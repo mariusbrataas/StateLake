@@ -1,82 +1,121 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { autoBind, generateId, nullish } from './utils';
+import { generateId, nullish } from './utils';
 
-/**
- * Ensure object contains no partials
- */
-type NoPartials<T> = {
-  [key in keyof T]-?: NoPartials<T[key]>;
+type EmptyPath = [any];
+
+type ReturnOutputs<T> = {
+  getBranch: StateLake<T>;
+  setState: (state: T) => void;
+  useBranch: ReturnOutputs<T>['getBranch'];
+  useState: [T, ReturnOutputs<T>['setState']];
+  useEffect: (
+    effect: (state: T, setState: ReturnOutputs<T>['setState']) => void
+  ) => void;
+  useKeys: [keys: string[], state: T];
 };
 
-/**
- * If a type cannot be inferred, assume it's potentially undefined
- */
-type Maybe<T, C> = unknown extends T ? C | undefined : T;
+type GetReturn<
+  T,
+  Return extends keyof ReturnOutputs<T>
+> = ReturnOutputs<T>[Return];
+
+type ShiftTuple<Arr extends any[]> = Arr extends [arg: any, ...rest: infer U]
+  ? U
+  : Arr;
+
+type EnsurePath<T, Path extends any[]> = Path[0] extends undefined
+  ? T
+  : EnsurePath<NonNullable<T>[Path[0]], ShiftTuple<Path>>;
+
+type CheckPrimitives<T, key> = T extends string | number | boolean
+  ? never
+  : key;
+
+type Keys<T> = keyof NonNullable<T>;
+
+interface Overloader<T, Return extends keyof ReturnOutputs<T>> {
+  use(): GetReturn<EnsurePath<T, []>, Return>;
+  use<K0 extends Keys<T>>(
+    ...keys: [CheckPrimitives<T, K0>]
+  ): GetReturn<EnsurePath<T, [K0]>, Return>;
+  use<K0 extends Keys<T>, K1 extends Keys<EnsurePath<T, [K0]>>>(
+    ...keys: [CheckPrimitives<T, K0>, CheckPrimitives<EnsurePath<T, [K0]>, K1>]
+  ): GetReturn<EnsurePath<T, [K0, K1]>, Return>;
+  use<
+    K0 extends Keys<T>,
+    K1 extends Keys<EnsurePath<T, [K0]>>,
+    K2 extends Keys<EnsurePath<T, [K0, K1]>>
+  >(
+    ...keys: [
+      CheckPrimitives<T, K0>,
+      CheckPrimitives<EnsurePath<T, [K0]>, K1>,
+      CheckPrimitives<EnsurePath<T, [K0, K1]>, K2>
+    ]
+  ): GetReturn<EnsurePath<T, [K0, K1, K2]>, Return>;
+  use<
+    K0 extends Keys<T>,
+    K1 extends Keys<EnsurePath<T, [K0]>>,
+    K2 extends Keys<EnsurePath<T, [K0, K1]>>,
+    K3 extends Keys<EnsurePath<T, [K0, K1, K2]>>
+  >(
+    ...keys: [
+      CheckPrimitives<T, K0>,
+      CheckPrimitives<EnsurePath<T, [K0]>, K1>,
+      CheckPrimitives<EnsurePath<T, [K0, K1]>, K2>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2]>, K3>
+    ]
+  ): GetReturn<EnsurePath<T, [K0, K1, K2, K3]>, Return>;
+  use<
+    K0 extends Keys<T>,
+    K1 extends Keys<EnsurePath<T, [K0]>>,
+    K2 extends Keys<EnsurePath<T, [K0, K1]>>,
+    K3 extends Keys<EnsurePath<T, [K0, K1, K2]>>,
+    K4 extends Keys<EnsurePath<T, [K0, K1, K2, K3]>>
+  >(
+    ...keys: [
+      CheckPrimitives<T, K0>,
+      CheckPrimitives<EnsurePath<T, [K0]>, K1>,
+      CheckPrimitives<EnsurePath<T, [K0, K1]>, K2>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2]>, K3>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2, K3]>, K4>
+    ]
+  ): GetReturn<EnsurePath<T, [K0, K1, K2, K3, K4]>, Return>;
+  use<
+    K0 extends Keys<T>,
+    K1 extends Keys<EnsurePath<T, [K0]>>,
+    K2 extends Keys<EnsurePath<T, [K0, K1]>>,
+    K3 extends Keys<EnsurePath<T, [K0, K1, K2]>>,
+    K4 extends Keys<EnsurePath<T, [K0, K1, K2, K3]>>,
+    K5 extends Keys<EnsurePath<T, [K0, K1, K2, K3, K4]>>
+  >(
+    ...keys: [
+      CheckPrimitives<T, K0>,
+      CheckPrimitives<EnsurePath<T, [K0]>, K1>,
+      CheckPrimitives<EnsurePath<T, [K0, K1]>, K2>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2]>, K3>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2, K3]>, K4>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2, K3, K4]>, K5>
+    ]
+  ): GetReturn<EnsurePath<T, [K0, K1, K2, K3, K4, K5]>, Return>;
+}
 
 /**
- * Get all available keys on type
+ * Get overloaded use function
  */
-export type Keys<T, C> = C extends any[]
-  ? never
-  : C extends string
-  ? never
-  : keyof T;
-
-/**
- * Basic state structure
- */
-export type IBase =
-  | {
-      [key: string]: any;
-    }
-  | undefined;
+type Overload<T, Return extends keyof ReturnOutputs<T>> = Overloader<
+  T,
+  Return
+>['use'];
 
 /**
  * Mapped component properties
  */
-export type MappedComponentProps<T extends IBase> = {
-  branch: StateLake<T[Keys<T, T>]>;
+export type MappedComponentProps<T> = {
+  branch: StateLake<T[keyof T]>;
   parent: StateLake<T>;
   idx: number;
   keys: string[];
 };
-
-/**
- * Empty path type
- */
-type EmptyPath = [any, any];
-
-/**
- * Return type of getBranch
- */
-export type GetBranch<T extends IBase> = StateLake<T>;
-
-/**
- * Return type of setState
- */
-export type SetState<T extends IBase> = (state: T) => void;
-
-/**
- * Return type of useBranch
- */
-export type UseBranch<T extends IBase> = StateLake<T>;
-
-/**
- * Return type of useState
- */
-export type UseState<T extends IBase> = [T, SetState<T>, StateLake<T>];
-
-/**
- * Return type of useEffect
- */
-export type UseEffect<T extends IBase> = (
-  effect: (state: T, setState: SetState<T>, branch: StateLake<T>) => void
-) => void;
-
-/**
- * Return type of useKeys
- */
-export type UseKeys<T extends IBase> = [string[], T, StateLake<T>];
 
 /**
  * Default filter function, used in `.Map`
@@ -88,7 +127,7 @@ function defaultFilter(value: any): boolean {
 /**
  * Mapped branch
  */
-function MappedBranch<T extends IBase, P>({
+function MappedBranch<T, Props>({
   idx,
   id,
   parent,
@@ -99,12 +138,12 @@ function MappedBranch<T extends IBase, P>({
   idx: number;
   id: string;
   parent: StateLake<T>;
-  Component: (props: P & MappedComponentProps<T>) => JSX.Element;
-  additionalProps: Omit<P, keyof MappedComponentProps<T>>;
+  Component: (props: Props & MappedComponentProps<T>) => JSX.Element;
+  additionalProps: Omit<Props, keyof MappedComponentProps<T>>;
   keys: string[];
 }) {
   // Branch
-  const branch = parent.useBranch(id as Keys<T, T>);
+  const branch = parent.useBranch(id as any);
 
   // Render
   return (
@@ -122,23 +161,151 @@ function MappedBranch<T extends IBase, P>({
  * Counter.
  * Rather than storing the same state many times in multiple different hooks,
  * every hook stores a copy of the same number.
+ *
+ * Note: For this utilitu I'm assuming the count won't ever exceed
+ * the `Number.MAX_SAFE_INTEGER`.
  */
 const counter = (function () {
   var count = 0;
-  return () =>
-    count < Number.MAX_SAFE_INTEGER
-      ? (count += 1)
-      : (count = Number.MIN_SAFE_INTEGER);
+  return () => count++;
 })();
+
+/**
+ * Ensure branch exists.
+ *
+ * Recursively propagate through the state tree to retrieve the branch at the
+ * given path. Missing branches will be created along the way.
+ */
+function ensureBranch<T>(
+  branch: StateLake<T>,
+  [prop, ...path]: string[]
+): StateLake<any> {
+  return prop === undefined
+    ? branch
+    : ensureBranch(
+        (branch['branches'][prop as keyof T] ||
+          (branch['branches'][prop as keyof T] = new StateLake(
+            branch.state && (branch.state as NonNullable<T>)[prop as keyof T],
+            branch,
+            prop
+          ))) as StateLake<NonNullable<T>[keyof T]>,
+        path
+      );
+}
+
+/**
+ * Update the value of a branch.
+ *
+ * If the given branch is either being deleted, or not yet tracked by `this` branch, the current state object
+ * will be updated.
+ */
+function updateBranchState<T>(
+  parent: StateLake<T>,
+  branch: StateLake<T[keyof T]>
+) {
+  // Helper variables
+  const got_key = parent.state && branch?.key in parent.state;
+
+  // Does the state need to re-attach to parent state object?
+  var add_or_remove = false;
+
+  // Handle add/remove branch
+  if (branch.state === null) {
+    // Remove branch?
+    if (got_key) {
+      // Ensure re-attachment
+      add_or_remove = true;
+
+      // Change state
+      const { [branch.key as keyof T]: remove_state, ...new_state } =
+        parent.state || {};
+      changeState(parent, new_state as any);
+
+      // Remove from branches
+      const { [branch.key as keyof T]: remove_branch, ...new_branches } =
+        parent['branches'];
+      parent['branches'] = new_branches as StateLake<T>['branches'];
+    }
+  } else {
+    // Add branch?
+    if (!got_key) {
+      // Ensure re-attachment
+      add_or_remove = true;
+
+      // Change state
+      changeState(parent, {
+        ...parent.state,
+        [branch.key]: branch.state
+      });
+    }
+  }
+
+  // Update parent if branch is being added or removed, else mutate state
+  if (add_or_remove) {
+    // Update parent
+    if (parent.parent) updateBranchState(parent.parent, parent);
+  } else {
+    // Mutate state object
+    parent.state[branch.key as keyof T] = branch.state;
+  }
+}
+
+/**
+ * Change state.
+ */
+function changeState<T>(branch: StateLake<T>, new_state: T) {
+  // Set current state
+  branch['current_state'] = new_state;
+
+  // Trigger hooks
+  const count = counter();
+  branch['hooks'].forEach(hook => hook(count));
+}
+
+function updateState<T>(
+  branch: StateLake<T>,
+  new_state: T,
+  parent_updated?: boolean
+) {
+  // Should update?
+  const do_update = parent_updated || new_state !== branch.state;
+
+  // Update
+  if (do_update) {
+    // Change state
+    changeState(branch, new_state);
+
+    // Update parent state object
+    if (branch.parent && !parent_updated)
+      updateBranchState(branch.parent, branch);
+  }
+
+  // Recurse down branches
+  if (!nullish(new_state))
+    (Object.keys(branch['branches']) as (keyof T)[]).forEach(key => {
+      const tmp_branch = branch['branches'][key];
+      if (tmp_branch)
+        updateState(
+          tmp_branch,
+          (key in new_state ? new_state[key] : null) as any,
+          do_update
+        );
+    });
+}
 
 /**
  * StateLake class
  */
-export class StateLake<T extends IBase> {
+export class StateLake<T> {
+  /**
+   * Unique identifier
+   */
+  private id: string;
+
   /**
    * Current state
    */
-  private state: T;
+  private current_state: T;
 
   /**
    * Reference to parent of this branch (if any).
@@ -152,11 +319,6 @@ export class StateLake<T extends IBase> {
   public readonly key: string;
 
   /**
-   * Unique id
-   */
-  private id: string;
-
-  /**
    * A list containing all hooks connected to this branch.
    */
   private hooks: ((state: number) => void)[];
@@ -164,7 +326,9 @@ export class StateLake<T extends IBase> {
   /**
    * References to all sub-branches of this branch.
    */
-  private branches: { [key in Keys<T, T>]?: StateLake<T[key]> };
+  private branches: {
+    [key in keyof NonNullable<T>]?: StateLake<NonNullable<T>[key]>;
+  };
 
   /**
    * Initialize a new StateLake.
@@ -178,66 +342,50 @@ export class StateLake<T extends IBase> {
    * @param key
    */
   constructor(
-    state: T | (() => T),
+    initial_state: T | (() => T),
     parent?: StateLake<T>['parent'],
     key?: StateLake<T>['key']
   ) {
     // Initialize parameter properties
-    this.state =
-      state && typeof state === 'function'
-        ? (state as () => T)()
-        : (state as T);
+    this.current_state =
+      initial_state && typeof initial_state === 'function'
+        ? (initial_state as () => T)()
+        : (initial_state as T);
     this.parent = parent;
     this.key = key || '';
 
     // Unique identifier
     this.id = generateId();
 
-    // Hooks
+    // Hooks placeholder
     this.hooks = [];
 
-    // Branches
+    // Branches placeholer
     this.branches = {};
-
-    // Bind class methods
-    autoBind(this, StateLake.prototype);
   }
 
   /**
-   * Create a memoized StateLake
+   * The current state object of this branch.
+   * If changes are made to the state object without using the StateLake api,
+   * those changes won't be tracked by react.
    */
-  public static useLake<T extends IBase>(state: T | (() => T)) {
-    return useMemo(() => new StateLake(state), []);
+  public get state() {
+    return this.current_state;
+  }
+
+  /**
+   * Set the state of this branch. This will also propagate new state to any
+   * sub-branches, as well as triggering relevant hooks.
+   */
+  public set state(new_state: T) {
+    this.updateState(new_state);
   }
 
   /**
    * Reference to the StateLake-object at the top of the store.
    */
-  public top(): StateLake<any> {
-    return this.parent?.top() || this;
-  }
-
-  /**
-   * Get state
-   *
-   * Returns the current state object of this branch.
-   * If changes are made to the state object without using the StateLake api,
-   * those changes won't be tracked by react.
-   */
-  public getState() {
-    return this.state;
-  }
-
-  /**
-   * Change state.
-   */
-  private changeState(state: T) {
-    // Set current state
-    this.state = state;
-
-    // Trigger hooks
-    const count = counter();
-    this.hooks.forEach(hook => hook(count));
+  public get top(): StateLake<any> {
+    return this.parent?.top || this;
   }
 
   /**
@@ -245,80 +393,8 @@ export class StateLake<T extends IBase> {
    *
    * Return all keys of the current state object.
    */
-  public keys(): string[] {
+  public get keys(): string[] {
     return this.state && Object.keys(this.state);
-  }
-
-  /**
-   * Ensure branch exists.
-   *
-   * Recursively propagate through the state tree to retrieve the branch at the
-   * given path. Missing branches will be created along the way.
-   */
-  private ensureBranch([prop, ...path]: string[]): StateLake<any> {
-    return prop === undefined
-      ? this
-      : (
-          (this.branches[prop as Keys<T, T>] ||
-            (this.branches[prop as Keys<T, T>] = new StateLake(
-              this.state && this.state[prop],
-              this,
-              prop
-            ))) as StateLake<T[Keys<T, T>]>
-        ).ensureBranch(path);
-  }
-
-  /**
-   * Update the value of a branch.
-   *
-   * If the given branch is either being deleted, or not yet tracked by `this` branch, the current state object
-   * will be updated.
-   */
-  private updateBranchState(branch: StateLake<T[Keys<T, T>]>) {
-    // Helper variables
-    const got_key = this.state && branch?.key in this.state;
-
-    // Does the state need to re-attach to parent state object?
-    var add_or_remove = false;
-
-    // Handle add/remove branch
-    if (branch.state === null) {
-      // Remove branch?
-      if (got_key) {
-        // Ensure re-attachment
-        add_or_remove = true;
-
-        // Change state
-        const { [branch.key]: remove_state, ...new_state } = this.state || {};
-        this.changeState(new_state as any);
-
-        // Remove from branches
-        const { [branch.key as Keys<T, T>]: remove_branch, ...new_branches } =
-          this.branches;
-        this.branches = new_branches as StateLake<T>['branches'];
-      }
-    } else {
-      // Add branch?
-      if (!got_key) {
-        // Ensure re-attachment
-        add_or_remove = true;
-
-        // Change state
-        this.changeState({
-          ...this.state,
-          [branch.key]: branch.state
-        });
-      }
-    }
-
-    // Update parent if branch is being added or removed, else mutate state
-    if (add_or_remove) {
-      // Update parent
-      if (this.parent) this.parent.updateBranchState(this);
-    } else {
-      // Mutate state object
-      this.state[branch.key as Keys<T, T>] = branch.state;
-    }
   }
 
   /**
@@ -330,39 +406,7 @@ export class StateLake<T extends IBase> {
    * 3. Any sub-branches needs to be notified about the change in order to
    * re-attach to the current state object, as well as triggering their own hooks.
    */
-  protected updateState(state: T, parent_updated?: boolean) {
-    // Should update?
-    const do_update = parent_updated || state !== this.state;
-
-    // Update
-    if (do_update) {
-      // Change state
-      this.changeState(state);
-
-      // Update parent state object
-      if (this.parent && !parent_updated) this.parent.updateBranchState(this);
-    }
-
-    // Recurse down branches
-    if (!nullish(state))
-      Object.keys(this.branches).forEach(key =>
-        this.branches[key as Keys<T, T>]?.updateState(
-          key in state ? state?.[key] : null,
-          do_update
-        )
-      );
-  }
-
-  /**
-   * Delete branch.
-   *
-   * This will not actually delete StateLake-objects, but they will be detached
-   * from the state tree. Unless the user keeps some reference to them, they should
-   * be collected by the garbage collector.
-   */
-  public delete() {
-    this.updateState(null as any);
-  }
+  private updateState = (new_state: T) => updateState(this, new_state);
 
   /**
    * Get branch.
@@ -373,61 +417,9 @@ export class StateLake<T extends IBase> {
    *
    * @param {String} path Relative path of branch
    */
-  public getBranch(): GetBranch<Maybe<T, T>>;
-  public getBranch<K0 extends Keys<NonNullable<T>, T>>(
-    k0: K0
-  ): GetBranch<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
-  public getBranch<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
-  >(
-    k0: K0,
-    k1: K1
-  ): GetBranch<
-    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
-  >;
-  public getBranch<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2
-  ): GetBranch<
-    Maybe<
-      NonNullable<T>[K0][K1][K2],
-      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
-    >
-  >;
-  public getBranch<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >,
-    K3 extends Keys<
-      NoPartials<T>[K0][K1][K2],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2,
-    k3: K3
-  ): GetBranch<
-    Maybe<
-      NonNullable<T>[K0][K1][K2][K3],
-      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
-    >
-  >;
-  public getBranch(...path: string[]) {
-    return this.ensureBranch(path);
-  }
+  public getBranch: Overload<T, 'getBranch'> = (...path: string[]) => {
+    return ensureBranch(this, path);
+  };
 
   /**
    * Set state.
@@ -451,61 +443,8 @@ export class StateLake<T extends IBase> {
    *   year: 1962
    * });
    */
-  public setState(): SetState<Maybe<T, T>>;
-  public setState<K0 extends Keys<NonNullable<T>, T>>(
-    k0: K0
-  ): SetState<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
-  public setState<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
-  >(
-    k0: K0,
-    k1: K1
-  ): SetState<
-    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
-  >;
-  public setState<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2
-  ): SetState<
-    Maybe<
-      NonNullable<T>[K0][K1][K2],
-      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
-    >
-  >;
-  public setState<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >,
-    K3 extends Keys<
-      NoPartials<T>[K0][K1][K2],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2,
-    k3: K3
-  ): SetState<
-    Maybe<
-      NonNullable<T>[K0][K1][K2][K3],
-      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
-    >
-  >;
-  public setState(...path: string[]) {
-    return this.getBranch(...(path as EmptyPath)).updateState;
-  }
+  public setState: Overload<T, 'setState'> = (...path: string[]) =>
+    this.getBranch(...(path as EmptyPath)).updateState;
 
   /**
    * Use branch.
@@ -515,64 +454,11 @@ export class StateLake<T extends IBase> {
    *
    * @param {String} path Relative path of branch
    */
-  public useBranch(): UseBranch<Maybe<T, T>>;
-  public useBranch<K0 extends Keys<NonNullable<T>, T>>(
-    k0: K0
-  ): UseBranch<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
-  public useBranch<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
-  >(
-    k0: K0,
-    k1: K1
-  ): UseBranch<
-    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
-  >;
-  public useBranch<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2
-  ): UseBranch<
-    Maybe<
-      NonNullable<T>[K0][K1][K2],
-      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
-    >
-  >;
-  public useBranch<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >,
-    K3 extends Keys<
-      NoPartials<T>[K0][K1][K2],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2,
-    k3: K3
-  ): UseBranch<
-    Maybe<
-      NonNullable<T>[K0][K1][K2][K3],
-      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
-    >
-  >;
-  public useBranch(...path: string[]) {
-    return useMemo(
+  public useBranch: Overload<T, 'useBranch'> = (...path: string[]) =>
+    useMemo(
       () => this.getBranch(...(path as EmptyPath)) as any,
       [this.id, ...path]
     );
-  }
 
   /**
    * Use state.
@@ -585,59 +471,7 @@ export class StateLake<T extends IBase> {
    * @example
    * const [car, setCar] = store.useState("car");
    */
-  public useState(): UseState<Maybe<T, T>>;
-  public useState<K0 extends Keys<NonNullable<T>, T>>(
-    k0: K0
-  ): UseState<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
-  public useState<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
-  >(
-    k0: K0,
-    k1: K1
-  ): UseState<
-    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
-  >;
-  public useState<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2
-  ): UseState<
-    Maybe<
-      NonNullable<T>[K0][K1][K2],
-      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
-    >
-  >;
-  public useState<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >,
-    K3 extends Keys<
-      NoPartials<T>[K0][K1][K2],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2,
-    k3: K3
-  ): UseState<
-    Maybe<
-      NonNullable<T>[K0][K1][K2][K3],
-      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
-    >
-  >;
-  public useState(...path: string[]) {
+  public useState: Overload<T, 'useState'> = (...path: string[]) => {
     // Reference branch
     const branch = this.useBranch(...(path as EmptyPath)) as StateLake<any>;
 
@@ -656,8 +490,8 @@ export class StateLake<T extends IBase> {
     }, [branch.id, setState]);
 
     // Return
-    return [branch.state, branch.updateState, branch];
-  }
+    return [branch.state, branch.updateState] as [any, any];
+  };
 
   /**
    * Use effect
@@ -667,73 +501,15 @@ export class StateLake<T extends IBase> {
    *
    * @param {String} path Relative path of branch
    */
-  public useEffect(): UseEffect<Maybe<T, T>>;
-  public useEffect<K0 extends Keys<NonNullable<T>, T>>(
-    k0: K0
-  ): UseEffect<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
-  public useEffect<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
-  >(
-    k0: K0,
-    k1: K1
-  ): UseEffect<
-    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
-  >;
-  public useEffect<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2
-  ): UseEffect<
-    Maybe<
-      NonNullable<T>[K0][K1][K2],
-      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
-    >
-  >;
-  public useEffect<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >,
-    K3 extends Keys<
-      NoPartials<T>[K0][K1][K2],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2,
-    k3: K3
-  ): UseEffect<
-    Maybe<
-      NonNullable<T>[K0][K1][K2][K3],
-      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
-    >
-  >;
-  public useEffect(...path: string[]) {
+  public useEffect: Overload<T, 'useEffect'> = (...path: string[]) => {
     // Current state
-    const [state, setState, branch] = this.useState(...(path as EmptyPath));
+    const [state, setState] = this.useState(...(path as EmptyPath));
 
     // Return callback to create effect
-    return (
-      effect: (
-        state: any,
-        setState: (state: any) => void,
-        branch: StateLake<any>
-      ) => void
-    ) => {
-      useEffect(() => effect(state, setState, branch), [state]);
+    return (effect: (state: any, setState: (state: any) => void) => void) => {
+      useEffect(() => effect(state, setState), [state]);
     };
-  }
+  };
 
   /**
    * Use keys.
@@ -742,70 +518,16 @@ export class StateLake<T extends IBase> {
    *
    * @param {String} path Relative path of branch
    */
-  public useKeys(): UseKeys<Maybe<T, T>>;
-  public useKeys<K0 extends Keys<NonNullable<T>, T>>(
-    k0: K0
-  ): UseKeys<Maybe<NonNullable<T>[K0], NonNullable<T>[K0]>>;
-  public useKeys<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>
-  >(
-    k0: K0,
-    k1: K1
-  ): UseKeys<
-    Maybe<NonNullable<T>[K0][K1], NonNullable<NonNullable<T>[K0]>[K1]>
-  >;
-  public useKeys<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2
-  ): UseKeys<
-    Maybe<
-      NonNullable<T>[K0][K1][K2],
-      NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]
-    >
-  >;
-  public useKeys<
-    K0 extends Keys<T, T>,
-    K1 extends Keys<NoPartials<T>[K0], T | NoPartials<T>[K0]>,
-    K2 extends Keys<
-      NoPartials<T>[K0][K1],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1]
-    >,
-    K3 extends Keys<
-      NoPartials<T>[K0][K1][K2],
-      T | NoPartials<T>[K0] | NoPartials<T>[K0][K1] | NoPartials<T>[K0][K1][K2]
-    >
-  >(
-    k0: K0,
-    k1: K1,
-    k2: K2,
-    k3: K3
-  ): UseKeys<
-    Maybe<
-      NonNullable<T>[K0][K1][K2][K3],
-      NonNullable<NonNullable<NonNullable<NonNullable<T>[K0]>[K1]>[K2]>[K3]
-    >
-  >;
-  public useKeys(...path: string[]) {
+  public useKeys: Overload<T, 'useKeys'> = (...path: string[]) => {
     // Current state
-    const [state, _setState, branch] = this.useState(
-      ...(path as EmptyPath)
-    ) as UseState<any>;
+    const [state, _setState] = this.useState(...(path as EmptyPath));
 
     // Return memoized keys
-    return useMemo(
-      () => [state ? Object.keys(state) : [], state, branch],
-      [state]
-    );
-  }
+    return useMemo(() => [state ? Object.keys(state) : [], state], [state]) as [
+      any,
+      any
+    ];
+  };
 
   /**
    * Efficiently map all sub-branches of a StateLake object, and pass the corresponding
@@ -821,12 +543,12 @@ export class StateLake<T extends IBase> {
     Component: (props: P & MappedComponentProps<T>) => JSX.Element;
     keys?: string[];
     sort?: (
-      value_a: T[Keys<T, T>],
-      value_b: T[Keys<T, T>],
+      value_a: T[keyof T],
+      value_b: T[keyof T],
       key_a: string,
       key_b: string
     ) => -1 | 0 | 1;
-    filter?: (value: T[Keys<T, T>], key: string, idx: number) => boolean;
+    filter?: (value: T[keyof T], key: string, idx: number) => boolean;
   } & Omit<P, keyof MappedComponentProps<T>>) {
     // Identifier - Helps prevent duplicate keys in the dom
     const identifier = useMemo(() => `${this.id}_${generateId()}`, [this.id]);
@@ -837,7 +559,7 @@ export class StateLake<T extends IBase> {
 
     // Filter
     const filt = useMemo<
-      (value: T[Keys<T, T>], key: string, idx: number) => boolean
+      (value: T[keyof T], key: string, idx: number) => boolean
     >(
       () =>
         filter
@@ -850,7 +572,7 @@ export class StateLake<T extends IBase> {
     const filterKeys: () => [string[], string] = () => {
       if (state) {
         const filtered = selectedKeys.filter((key, idx) =>
-          filt(state[key], key, idx)
+          filt(state[key as keyof T], key, idx)
         );
         return [filtered, filtered.join('')];
       }
@@ -864,9 +586,11 @@ export class StateLake<T extends IBase> {
     // Sort keys
     const sortKeys: () => [string[], string] = () => {
       if (sort) {
-        const sorted = filteredKeys.sort((keyA, keyB) =>
-          sort(state?.[keyA], state?.[keyB], keyA, keyB)
-        );
+        const sorted = state
+          ? filteredKeys.sort((keyA, keyB) =>
+              sort(state[keyA as keyof T], state[keyB as keyof T], keyA, keyB)
+            )
+          : [];
         return [sorted, sorted.join('')];
       }
       return [filteredKeys, joinedFilteredKeys];
@@ -881,7 +605,7 @@ export class StateLake<T extends IBase> {
       <>
         {sortedKeys.map((key, idx, keys) => (
           <MappedBranch
-            key={`${identifier}_${key}`}
+            key={`${identifier}_${key}_${this.getBranch(key as any).id}`}
             idx={idx}
             id={key}
             parent={this}

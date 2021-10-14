@@ -1,38 +1,4 @@
 /**
- * Automatically bind all class methods to object.
- *
- * Both the the `this` keyword, and the class prototype, must be provided, like so:
- *
- * ```ts
- * // ...inside constructor
- * autoBind(this, MyClass.prototype)
- * ```
- *
- * Here's an example:
- *
- * @example
- * class MyClass {
- *   private message: string;
- *
- *   constructor(message: string) {
- *     this.message = message;
- *     autoBind(this, MyClass.prototype);
- *   }
- *
- *   public print() {
- *     console.log(this.message);
- *   }
- * }
- *
- */
-export function autoBind(instance: any, proto: any) {
-  Object.getOwnPropertyNames(proto).forEach(method => {
-    if (!(typeof proto[method] === 'function')) return;
-    instance[method] = proto[method].bind(instance);
-  });
-}
-
-/**
  * Tokens.
  * Used for generating IDs and numbers of different bases.
  */
@@ -120,6 +86,10 @@ export function extractIdComponents(id: string) {
 /**
  * Check if argument is nullish (null or undefined)
  */
-export function nullish(arg: any) {
-  return arg === undefined || arg === null;
+export function nullish<T extends any>(arg: T) {
+  return (arg === undefined || arg === null) as T extends undefined
+    ? true
+    : T extends null
+    ? true
+    : false;
 }
