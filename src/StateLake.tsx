@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { generateId, nullish } from './utils';
 
 type EmptyPath = [any];
 
@@ -118,6 +117,17 @@ export type MappedComponentProps<T> = {
 };
 
 /**
+ * Check if argument is nullish (null or undefined)
+ */
+function nullish<T extends any>(arg: T) {
+  return (arg === undefined || arg === null) as T extends undefined
+    ? true
+    : T extends null
+    ? true
+    : false;
+}
+
+/**
  * Default filter function, used in `.Map`
  */
 function defaultFilter(value: any): boolean {
@@ -158,17 +168,125 @@ function MappedBranch<T, Props>({
 }
 
 /**
+ * Efficiently map all sub-branches of a StateLake object, and pass the corresponding
+ * branches to the given component.
+ */
+function MapBranch<T, P>({
+  branch,
+  Component,
+  keys,
+  sort,
+  filter,
+  ...props
+}: {
+  branch: StateLake<T>;
+  Component: (props: any) => JSX.Element;
+  keys?: string[];
+  sort?: (
+    value_a: T[keyof T],
+    value_b: T[keyof T],
+    key_a: string,
+    key_b: string
+  ) => -1 | 0 | 1;
+  filter?: (value: T[keyof T], key: string, idx: number) => boolean;
+} & Omit<P, keyof MappedComponentProps<T>>) {
+  // Identifier - Helps prevent duplicate keys in the dom
+  const identifier = useMemo(
+    () => `${branch['id']}_${generateId()}`,
+    [branch['id']]
+  );
+
+  // State
+  const [stateKeys, state] = branch.useKeys();
+  const selectedKeys = keys || stateKeys;
+
+  // Filter
+  const filt = useMemo<
+    (value: T[keyof T], key: string, idx: number) => boolean
+  >(
+    () =>
+      filter
+        ? (value, key, idx) => defaultFilter(value) && filter(value, key, idx)
+        : defaultFilter,
+    [filter]
+  );
+
+  // Filter keys
+  const filterKeys: () => [string[], string] = () => {
+    if (state) {
+      const filtered = selectedKeys.filter((key, idx) =>
+        filt(state[key as keyof T], key, idx)
+      );
+      return [filtered, filtered.join('')];
+    }
+    return [[], ''];
+  };
+  const [filteredKeys, joinedFilteredKeys] = useMemo(filterKeys, [
+    filt,
+    selectedKeys.join('')
+  ]);
+
+  // Sort keys
+  const sortKeys: () => [string[], string] = () => {
+    if (sort) {
+      const sorted = state
+        ? filteredKeys.sort((keyA, keyB) =>
+            sort(state[keyA as keyof T], state[keyB as keyof T], keyA, keyB)
+          )
+        : [];
+      return [sorted, sorted.join('')];
+    }
+    return [filteredKeys, joinedFilteredKeys];
+  };
+  const [sortedKeys, joinedSortedKeys] = useMemo(sortKeys, [
+    sort,
+    joinedFilteredKeys
+  ]);
+
+  // Helper: Create nodes
+  const createNodes = () => (
+    <>
+      {sortedKeys.map((key, idx, keys) => (
+        <MappedBranch
+          key={`${identifier}_${key}_${branch.getBranch(key as any)['id']}`}
+          idx={idx}
+          id={key}
+          parent={branch}
+          Component={Component}
+          keys={keys}
+          additionalProps={props as any}
+        />
+      ))}
+    </>
+  );
+
+  // Memoized nodes
+  return useMemo(createNodes, [
+    identifier,
+    Component,
+    joinedSortedKeys,
+    ...Object.values(props || {})
+  ]);
+}
+
+/**
  * Counter.
  * Rather than storing the same state many times in multiple different hooks,
- * every hook stores a copy of the same number.
+ * every hook stores the same number. This still triggers re-render with updated state.
  *
- * Note: For this utilitu I'm assuming the count won't ever exceed
+ * Note: For this utility I'm assuming the count won't ever exceed
  * the `Number.MAX_SAFE_INTEGER`.
  */
 const counter = (function () {
-  var count = 0;
+  var count = Number.MIN_SAFE_INTEGER;
   return () => count++;
 })();
+
+/**
+ * Generate a unique ID for this session.
+ */
+const generateId = () =>
+  parseInt(counter().toString().split('').reverse().join('')).toString(36);
 
 /**
  * Ensure branch exists.
@@ -262,6 +380,15 @@ function changeState<T>(branch: StateLake<T>, new_state: T) {
   branch['hooks'].forEach(hook => hook(count));
 }
 
+/**
+ * Update state.
+ *
+ * Things that happen here:
+ * 1. The current state object needs to be replaced.
+ * 2. The parent needs to get a reference to the new state object.
+ * 3. Any sub-branches needs to be notified about the change in order to
+ * re-attach to the current state object, as well as triggering their own hooks.
+ */
 function updateState<T>(
   branch: StateLake<T>,
   new_state: T,
@@ -348,7 +475,7 @@ export class StateLake<T> {
   ) {
     // Initialize parameter properties
     this.current_state =
-      initial_state && typeof initial_state === 'function'
+      typeof initial_state === 'function'
         ? (initial_state as () => T)()
         : (initial_state as T);
     this.parent = parent;
@@ -398,13 +525,7 @@ export class StateLake<T> {
   }
 
   /**
-   * Update state.
-   *
-   * Things that happen here:
-   * 1. The current state object needs to be replaced.
-   * 2. The parent needs to get a reference to the new state object.
-   * 3. Any sub-branches needs to be notified about the change in order to
-   * re-attach to the current state object, as well as triggering their own hooks.
+   * Update state
    */
   private updateState = (new_state: T) => updateState(this, new_state);
 
@@ -530,99 +651,20 @@ export class StateLake<T> {
   };
 
   /**
-   * Efficiently map all sub-branches of a StateLake object, and pass the corresponding
+   * Efficiently map all sub-branches of this branch, and pass the corresponding
    * branches to the given component.
    */
-  public Map<P>({
-    Component,
-    keys,
-    sort,
-    filter,
-    ...props
-  }: {
-    Component: (props: P & MappedComponentProps<T>) => JSX.Element;
-    keys?: string[];
-    sort?: (
-      value_a: T[keyof T],
-      value_b: T[keyof T],
-      key_a: string,
-      key_b: string
-    ) => -1 | 0 | 1;
-    filter?: (value: T[keyof T], key: string, idx: number) => boolean;
-  } & Omit<P, keyof MappedComponentProps<T>>) {
-    // Identifier - Helps prevent duplicate keys in the dom
-    const identifier = useMemo(() => `${this.id}_${generateId()}`, [this.id]);
-
-    // State
-    const [stateKeys, state] = this.useKeys();
-    const selectedKeys = keys || stateKeys;
-
-    // Filter
-    const filt = useMemo<
-      (value: T[keyof T], key: string, idx: number) => boolean
-    >(
-      () =>
-        filter
-          ? (value, key, idx) => defaultFilter(value) && filter(value, key, idx)
-          : defaultFilter,
-      [filter]
-    );
-
-    // Filter keys
-    const filterKeys: () => [string[], string] = () => {
-      if (state) {
-        const filtered = selectedKeys.filter((key, idx) =>
-          filt(state[key as keyof T], key, idx)
-        );
-        return [filtered, filtered.join('')];
-      }
-      return [[], ''];
-    };
-    const [filteredKeys, joinedFilteredKeys] = useMemo(filterKeys, [
-      filt,
-      selectedKeys.join('')
-    ]);
-
-    // Sort keys
-    const sortKeys: () => [string[], string] = () => {
-      if (sort) {
-        const sorted = state
-          ? filteredKeys.sort((keyA, keyB) =>
-              sort(state[keyA as keyof T], state[keyB as keyof T], keyA, keyB)
-            )
-          : [];
-        return [sorted, sorted.join('')];
-      }
-      return [filteredKeys, joinedFilteredKeys];
-    };
-    const [sortedKeys, joinedSortedKeys] = useMemo(sortKeys, [
-      sort,
-      joinedFilteredKeys
-    ]);
-
-    // Helper: Create nodes
-    const createNodes = () => (
-      <>
-        {sortedKeys.map((key, idx, keys) => (
-          <MappedBranch
-            key={`${identifier}_${key}_${this.getBranch(key as any).id}`}
-            idx={idx}
-            id={key}
-            parent={this}
-            Component={Component}
-            keys={keys}
-            additionalProps={props as any}
-          />
-        ))}
-      </>
-    );
-
-    // Memoized nodes
-    return useMemo(createNodes, [
-      identifier,
-      Component,
-      joinedSortedKeys,
-      ...Object.values(props || {})
-    ]);
-  }
+  public Map: <P>(
+    props: {
+      Component: (props: P & MappedComponentProps<T>) => JSX.Element;
+      keys?: string[];
+      sort?: (
+        value_a: T[keyof T],
+        value_b: T[keyof T],
+        key_a: string,
+        key_b: string
+      ) => 0 | 1 | -1;
+      filter?: (value: T[keyof T], key: string, idx: number) => boolean;
+    } & Omit<P, keyof MappedComponentProps<T>>
+  ) => JSX.Element = (props: any) => <MapBranch branch={this} {...props} />;
 }
