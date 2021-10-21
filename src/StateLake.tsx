@@ -1,7 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
+/**
+ * Empty path, used for referencing sub branches
+ */
 type EmptyPath = [any];
 
+/**
+ * Outputs of overloaded methods
+ */
 type ReturnOutputs<T> = {
   getBranch: StateLake<T>;
   setState: (new_state: T | ((prev_state: T) => T)) => void;
@@ -14,34 +20,59 @@ type ReturnOutputs<T> = {
   useKeys: [keys: string[], state: T];
 };
 
-type GetReturn<
-  T,
-  Return extends keyof ReturnOutputs<T>
-> = ReturnOutputs<T>[Return];
+/**
+ * Allowed output keys
+ */
+type ReturnKeys = keyof ReturnOutputs<any>;
 
+/**
+ * Shorthand for getting the output of a given method
+ */
+type GetReturn<T, Return extends ReturnKeys> = ReturnOutputs<T>[Return];
+
+/**
+ * Shift an array of string literals
+ */
 type ShiftTuple<Arr extends any[]> = Arr extends [arg: any, ...rest: infer U]
   ? U
   : Arr;
 
+/**
+ * Create a new version of the given type in which all ancestors of a given path
+ * is guaranteed to exists
+ */
 type EnsurePath<T, Path extends any[]> = Path[0] extends undefined
   ? T
   : EnsurePath<NonNullable<T>[Path[0]], ShiftTuple<Path>>;
 
+/**
+ * Return never if the given type is primitive, else return the given key
+ */
 type CheckPrimitives<T, key> = T extends string | number | boolean
   ? never
   : key;
 
+/**
+ * Shorthand for getting the available keys of a type
+ */
 type Keys<T> = keyof NonNullable<T>;
 
-interface Overloader<T, Return extends keyof ReturnOutputs<T>> {
-  use(): GetReturn<EnsurePath<T, []>, Return>;
-  use<K0 extends Keys<T>>(
+/**
+ * Path overloader.
+ *
+ * `f` is overloaded with all different paths that exists in a nested object type.
+ * Returns the function with overloaded parameters, as well as it's return type at
+ * the given path.
+ */
+interface Overloader<T, Return extends ReturnKeys> {
+  f(): GetReturn<EnsurePath<T, []>, Return>;
+  f<K0 extends Keys<T>>(
     ...keys: [CheckPrimitives<T, K0>]
   ): GetReturn<EnsurePath<T, [K0]>, Return>;
-  use<K0 extends Keys<T>, K1 extends Keys<EnsurePath<T, [K0]>>>(
+  f<K0 extends Keys<T>, K1 extends Keys<EnsurePath<T, [K0]>>>(
     ...keys: [CheckPrimitives<T, K0>, CheckPrimitives<EnsurePath<T, [K0]>, K1>]
   ): GetReturn<EnsurePath<T, [K0, K1]>, Return>;
-  use<
+  f<
     K0 extends Keys<T>,
     K1 extends Keys<EnsurePath<T, [K0]>>,
     K2 extends Keys<EnsurePath<T, [K0, K1]>>
@@ -52,7 +83,7 @@ interface Overloader<T, Return extends keyof ReturnOutputs<T>> {
       CheckPrimitives<EnsurePath<T, [K0, K1]>, K2>
     ]
   ): GetReturn<EnsurePath<T, [K0, K1, K2]>, Return>;
-  use<
+  f<
     K0 extends Keys<T>,
     K1 extends Keys<EnsurePath<T, [K0]>>,
     K2 extends Keys<EnsurePath<T, [K0, K1]>>,
@@ -65,7 +96,7 @@ interface Overloader<T, Return extends keyof ReturnOutputs<T>> {
       CheckPrimitives<EnsurePath<T, [K0, K1, K2]>, K3>
     ]
   ): GetReturn<EnsurePath<T, [K0, K1, K2, K3]>, Return>;
-  use<
+  f<
     K0 extends Keys<T>,
     K1 extends Keys<EnsurePath<T, [K0]>>,
     K2 extends Keys<EnsurePath<T, [K0, K1]>>,
@@ -80,7 +111,7 @@ interface Overloader<T, Return extends keyof ReturnOutputs<T>> {
       CheckPrimitives<EnsurePath<T, [K0, K1, K2, K3]>, K4>
     ]
   ): GetReturn<EnsurePath<T, [K0, K1, K2, K3, K4]>, Return>;
-  use<
+  f<
     K0 extends Keys<T>,
     K1 extends Keys<EnsurePath<T, [K0]>>,
     K2 extends Keys<EnsurePath<T, [K0, K1]>>,
@@ -97,15 +128,31 @@ interface Overloader<T, Return extends keyof ReturnOutputs<T>> {
       CheckPrimitives<EnsurePath<T, [K0, K1, K2, K3, K4]>, K5>
     ]
   ): GetReturn<EnsurePath<T, [K0, K1, K2, K3, K4, K5]>, Return>;
+  f<
+    K0 extends Keys<T>,
+    K1 extends Keys<EnsurePath<T, [K0]>>,
+    K2 extends Keys<EnsurePath<T, [K0, K1]>>,
+    K3 extends Keys<EnsurePath<T, [K0, K1, K2]>>,
+    K4 extends Keys<EnsurePath<T, [K0, K1, K2, K3]>>,
+    K5 extends Keys<EnsurePath<T, [K0, K1, K2, K3, K4]>>,
+    K6 extends Keys<EnsurePath<T, [K0, K1, K2, K3, K4, K5]>>
+  >(
+    ...keys: [
+      CheckPrimitives<T, K0>,
+      CheckPrimitives<EnsurePath<T, [K0]>, K1>,
+      CheckPrimitives<EnsurePath<T, [K0, K1]>, K2>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2]>, K3>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2, K3]>, K4>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2, K3, K4]>, K5>,
+      CheckPrimitives<EnsurePath<T, [K0, K1, K2, K3, K4, K5]>, K6>
+    ]
+  ): GetReturn<EnsurePath<T, [K0, K1, K2, K3, K4, K5, K6]>, Return>;
 }
 
 /**
- * Get overloaded use function
+ * Get overloaded function
  */
-type Overload<T, Return extends keyof ReturnOutputs<T>> = Overloader<
-  T,
-  Return
->['use'];
+type Overload<T, Return extends ReturnKeys> = Overloader<T, Return>['f'];
 
 /**
  * Mapped component properties
