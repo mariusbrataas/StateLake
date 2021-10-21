@@ -4,12 +4,13 @@ type EmptyPath = [any];
 
 type ReturnOutputs<T> = {
   getBranch: StateLake<T>;
-  setState: (state: T) => void;
+  setState: (new_state: T | ((prev_state: T) => T)) => void;
   useBranch: ReturnOutputs<T>['getBranch'];
   useState: [T, ReturnOutputs<T>['setState']];
   useEffect: (
     effect: (state: T, setState: ReturnOutputs<T>['setState']) => void
   ) => void;
+  use: T;
   useKeys: [keys: string[], state: T];
 };
 
@@ -527,7 +528,13 @@ export class StateLake<T> {
   /**
    * Update state
    */
-  private updateState = (new_state: T) => updateState(this, new_state);
+  private updateState = (new_state: T | ((prev_state: T) => T)) =>
+    updateState(
+      this,
+      typeof new_state === 'function'
+        ? (new_state as (prev_state: T) => T)(this.state)
+        : (new_state as T)
+    );
 
   /**
    * Get branch.
@@ -565,7 +572,7 @@ export class StateLake<T> {
    * });
    */
   public setState: Overload<T, 'setState'> = (...path: string[]) =>
-    this.getBranch(...(path as EmptyPath)).updateState;
+    (this.getBranch(...(path as EmptyPath)) as StateLake<any>).updateState;
 
   /**
    * Use branch.
@@ -615,6 +622,15 @@ export class StateLake<T> {
   };
 
   /**
+   * Shorthand for `const state = store.useState("my","path")[0];`
+   *
+   * @param {String} path Relative path of branch
+   */
+  public use: Overload<T, 'use'> = (...path: string[]) => {
+    return this.useState(...(path as EmptyPath))[0] as any;
+  };
+
+  /**
    * Use effect
    *
    * Create an effect that will be triggered by changes to the state of the
@@ -641,7 +657,7 @@ export class StateLake<T> {
    */
   public useKeys: Overload<T, 'useKeys'> = (...path: string[]) => {
     // Current state
-    const [state, _setState] = this.useState(...(path as EmptyPath));
+    const state = this.use(...(path as EmptyPath));
 
     // Return memoized keys
     return useMemo(() => [state ? Object.keys(state) : [], state], [state]) as [

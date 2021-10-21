@@ -3,7 +3,7 @@
     "**/.git": true,
     "**/.DS_Store": true,
     "**/node_modules": true,
-    "**/build": false,
+    "**/build": true,
     "**/package-lock.json": true,
     "**/tsconfig.nocomments.json": true
   },
