@@ -216,6 +216,22 @@ function MappedBranch<T, Props>({
 }
 
 /**
+ * Mapped branch properties
+ */
+type MapBranchProps<T, P> = {
+  branch: StateLake<T>;
+  Component: (props: P & MappedComponentProps<T>) => JSX.Element;
+  keys?: string[];
+  sort?: (
+    value_a: T[keyof T],
+    value_b: T[keyof T],
+    key_a: string,
+    key_b: string
+  ) => -1 | 0 | 1;
+  filter?: (value: T[keyof T], key: string, idx: number) => boolean;
+} & Omit<P, keyof MappedComponentProps<T>>;
+
+/**
  * Efficiently map all sub-branches of a StateLake object, and pass the corresponding
  * branches to the given component.
  */
@@ -226,18 +242,7 @@ function MapBranch<T, P>({
   sort,
   filter,
   ...props
-}: {
-  branch: StateLake<T>;
-  Component: (props: any) => JSX.Element;
-  keys?: string[];
-  sort?: (
-    value_a: T[keyof T],
-    value_b: T[keyof T],
-    key_a: string,
-    key_b: string
-  ) => -1 | 0 | 1;
-  filter?: (value: T[keyof T], key: string, idx: number) => boolean;
-} & Omit<P, keyof MappedComponentProps<T>>) {
+}: MapBranchProps<T, P>) {
   // Identifier - Helps prevent duplicate keys in the dom
   const identifier = useMemo(
     () => `${branch['id']}_${generateId()}`,
@@ -502,7 +507,7 @@ export class StateLake<T> {
    * References to all sub-branches of this branch.
    */
   private branches: {
-    [key in keyof NonNullable<T>]?: StateLake<NonNullable<T>[key]>;
+    [key in Keys<T>]?: StateLake<NonNullable<T>[key]>;
   };
 
   /**
@@ -717,17 +722,6 @@ export class StateLake<T> {
    * Efficiently map all sub-branches of this branch, and pass the corresponding
    * branches to the given component.
    */
-  public Map: <P>(
-    props: {
-      Component: (props: P & MappedComponentProps<T>) => JSX.Element;
-      keys?: string[];
-      sort?: (
-        value_a: T[keyof T],
-        value_b: T[keyof T],
-        key_a: string,
-        key_b: string
-      ) => 0 | 1 | -1;
-      filter?: (value: T[keyof T], key: string, idx: number) => boolean;
-    } & Omit<P, keyof MappedComponentProps<T>>
-  ) => JSX.Element = (props: any) => <MapBranch branch={this} {...props} />;
+  public Map: <P>(props: Omit<MapBranchProps<T, P>, 'branch'>) => JSX.Element =
+    (props: any) => <MapBranch branch={this} {...props} />;
 }
