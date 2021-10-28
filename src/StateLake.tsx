@@ -365,6 +365,18 @@ function ensureBranch<T>(
 }
 
 /**
+ * Change state.
+ */
+function changeState<T>(branch: StateLake<T>, new_state: T) {
+  // Set current state
+  branch['current_state'] = new_state;
+
+  // Trigger hooks
+  const count = counter();
+  branch['hooks'].forEach(hook => hook(count));
+}
+
+/**
  * Update the value of a branch.
  *
  * If the given branch is either being deleted, or not yet tracked by `this` branch, the current state object
@@ -419,18 +431,6 @@ function updateBranchState<T>(
     // Mutate state object
     parent.state[branch.key as keyof T] = branch.state;
   }
-}
-
-/**
- * Change state.
- */
-function changeState<T>(branch: StateLake<T>, new_state: T) {
-  // Set current state
-  branch['current_state'] = new_state;
-
-  // Trigger hooks
-  const count = counter();
-  branch['hooks'].forEach(hook => hook(count));
 }
 
 /**
@@ -551,14 +551,6 @@ export class StateLake<T> {
    */
   public get state() {
     return this.current_state;
-  }
-
-  /**
-   * Set the state of this branch. This will also propagate new state to any
-   * sub-branches, as well as triggering relevant hooks.
-   */
-  public set state(new_state: T) {
-    this.updateState(new_state);
   }
 
   /**
