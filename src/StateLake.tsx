@@ -10,7 +10,7 @@ type EmptyPath = [any];
  */
 type ReturnOutputs<T> = {
   getBranch: StateLake<T>;
-  setState: (new_state: T | ((prev_state: T) => T)) => void;
+  setState: (new_state: T | ((prev_state: T) => T)) => T;
   useBranch: ReturnOutputs<T>['getBranch'];
   useState: [T, ReturnOutputs<T>['setState']];
   useEffect: (
@@ -471,6 +471,9 @@ function updateState<T>(
           do_update
         );
     });
+
+  // Return the newest state
+  return branch.state;
 }
 
 /**
@@ -687,7 +690,7 @@ export class StateLake<T> {
     const [state, setState] = this.useState(...(path as EmptyPath));
 
     // Return callback to create effect
-    return (effect: (state: any, setState: (state: any) => void) => void) => {
+    return (effect: (state: any, setState: (state: any) => any) => void) => {
       useEffect(() => effect(state, setState), [state]);
     };
   };
