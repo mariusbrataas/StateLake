@@ -463,10 +463,10 @@ function updateState<T>(
   // Recurse down branches
   if (!nullish(new_state))
     (Object.keys(branch['branches']) as (keyof T)[]).forEach(key => {
-      const tmp_branch = branch['branches'][key];
-      if (tmp_branch)
+      const sub_branch = branch['branches'][key];
+      if (sub_branch)
         updateState(
-          tmp_branch,
+          sub_branch,
           (key in new_state ? new_state[key] : null) as any,
           do_update
         );
@@ -665,7 +665,7 @@ export class StateLake<T> {
     }, [branch.id, setState]);
 
     // Return
-    return [branch.state, branch.updateState] as [any, any];
+    return [branch.current_state, branch.updateState] as [any, any];
   };
 
   /**
