@@ -6,18 +6,23 @@ import React, { useEffect, useMemo, useState } from 'react';
 type EmptyPath = [any];
 
 /**
+ * Dispatch state update
+ */
+export type Dispatch<T> = (new_state: T | ((previous_state: T) => T)) => T;
+
+/**
  * Outputs of overloaded methods
  */
 type ReturnOutputs<T> = {
   getBranch: StateLake<T>;
-  setState: (new_state: T | ((prev_state: T) => T)) => T;
-  useBranch: ReturnOutputs<T>['getBranch'];
-  useState: [T, ReturnOutputs<T>['setState']];
+  setState: Dispatch<T>;
+  useBranch: StateLake<T>;
+  useState: [T, Dispatch<T>];
   useEffect: (
-    effect: (state: T, setState: ReturnOutputs<T>['setState']) => void
+    effect: (state: T, setState: Dispatch<T>) => void | (() => void)
   ) => void;
   use: T;
-  useKeys: [keys: string[], state: T];
+  useKeys: [keys: string[], state: T, setState: Dispatch<T>];
 };
 
 /**
@@ -155,16 +160,6 @@ interface Overloader<T, Return extends ReturnKeys> {
 type Overload<T, Return extends ReturnKeys> = Overloader<T, Return>['f'];
 
 /**
- * Mapped component properties
- */
-export type MappedComponentProps<T> = {
-  branch: StateLake<T[keyof T]>;
-  parent: StateLake<T>;
-  idx: number;
-  keys: string[];
-};
-
-/**
  * Check if argument is nullish (null or undefined)
  */
 function nullish<T extends any>(arg: T) {
@@ -176,11 +171,35 @@ function nullish<T extends any>(arg: T) {
 }
 
 /**
- * Default filter function, used in `.Map`
+ * Counter.
+ * Rather than storing the same state many times in multiple different hooks,
+ * every hook stores the same number. This still triggers re-render with updated state.
+ *
+ * Note: For this utility, an assumption has been made that the count won't ever
+ * exceed the `Number.MAX_SAFE_INTEGER`.
  */
-function defaultFilter(value: any): boolean {
-  return !nullish(value);
-}
+const counter = (function () {
+  var count = -(2 ** 31 - 1);
+  return () => count++;
+})();
+
+/**
+ * Generate a unique ID for this session.
+ */
+const generateId = (function () {
+  const random_id = Math.random().toString(36).substr(2, 4);
+  return () => `${random_id}_${counter().toString(36)}`;
+})();
+
+/**
+ * Mapped component properties
+ */
+export type MappedComponentProps<T> = {
+  branch: StateLake<T[keyof T]>;
+  parent: StateLake<T>;
+  idx: number;
+  keys: string[];
+};
 
 /**
  * Mapped branch
@@ -222,13 +241,6 @@ type MapBranchProps<T, P> = {
   branch: StateLake<T>;
   Component: (props: P & MappedComponentProps<T>) => JSX.Element;
   keys?: string[];
-  sort?: (
-    value_a: T[keyof T],
-    value_b: T[keyof T],
-    key_a: string,
-    key_b: string
-  ) => -1 | 0 | 1;
-  filter?: (value: T[keyof T], key: string, idx: number) => boolean;
 } & Omit<P, keyof MappedComponentProps<T>>;
 
 /**
@@ -239,8 +251,6 @@ function MapBranch<T, P>({
   branch,
   Component,
   keys,
-  sort,
-  filter,
   ...props
 }: MapBranchProps<T, P>) {
   // Identifier - Helps prevent duplicate keys in the dom
@@ -249,97 +259,30 @@ function MapBranch<T, P>({
     [branch['id']]
   );
 
-  // State
-  const [stateKeys, state] = branch.useKeys();
+  // Keys
+  const stateKeys = branch.useKeys()[0];
   const selectedKeys = keys || stateKeys;
 
-  // Filter
-  const filt = useMemo<
-    (value: T[keyof T], key: string, idx: number) => boolean
-  >(
-    () =>
-      filter
-        ? (value, key, idx) => defaultFilter(value) && filter(value, key, idx)
-        : defaultFilter,
-    [filter]
+  // Memoized child nodes
+  return useMemo(
+    () => (
+      <>
+        {selectedKeys.map((key: any, idx) => (
+          <MappedBranch
+            key={`${identifier}_${key}_${branch.getBranch(key)['id']}`}
+            idx={idx}
+            id={key}
+            parent={branch}
+            Component={Component}
+            keys={selectedKeys}
+            additionalProps={props as any}
+          />
+        ))}
+      </>
+    ),
+    [identifier, Component, selectedKeys, ...Object.values(props)]
   );
-
-  // Filter keys
-  const filterKeys: () => [string[], string] = () => {
-    if (state) {
-      const filtered = selectedKeys.filter((key, idx) =>
-        filt(state[key as keyof T], key, idx)
-      );
-      return [filtered, filtered.join('')];
-    }
-    return [[], ''];
-  };
-  const [filteredKeys, joinedFilteredKeys] = useMemo(filterKeys, [
-    filt,
-    selectedKeys.join('')
-  ]);
-
-  // Sort keys
-  const sortKeys: () => [string[], string] = () => {
-    if (sort) {
-      const sorted = state
-        ? filteredKeys.sort((keyA, keyB) =>
-            sort(state[keyA as keyof T], state[keyB as keyof T], keyA, keyB)
-          )
-        : [];
-      return [sorted, sorted.join('')];
-    }
-    return [filteredKeys, joinedFilteredKeys];
-  };
-  const [sortedKeys, joinedSortedKeys] = useMemo(sortKeys, [
-    sort,
-    joinedFilteredKeys
-  ]);
-
-  // Helper: Create nodes
-  const createNodes = () => (
-    <>
-      {sortedKeys.map((key, idx, keys) => (
-        <MappedBranch
-          key={`${identifier}_${key}_${branch.getBranch(key as any)['id']}`}
-          idx={idx}
-          id={key}
-          parent={branch}
-          Component={Component}
-          keys={keys}
-          additionalProps={props as any}
-        />
-      ))}
-    </>
-  );
-
-  // Memoized nodes
-  return useMemo(createNodes, [
-    identifier,
-    Component,
-    joinedSortedKeys,
-    ...Object.values(props || {})
-  ]);
 }
-
-/**
- * Counter.
- * Rather than storing the same state many times in multiple different hooks,
- * every hook stores the same number. This still triggers re-render with updated state.
- *
- * Note: For this utility I'm assuming the count won't ever exceed
- * the `Number.MAX_SAFE_INTEGER`.
- */
-const counter = (function () {
-  var count = Number.MIN_SAFE_INTEGER;
-  return () => count++;
-})();
-
-/**
- * Generate a unique ID for this session.
- */
-const generateId = () =>
-  parseInt(counter().toString().split('').reverse().join('')).toString(36);
 
 /**
  * Ensure branch exists.
@@ -569,7 +512,7 @@ export class StateLake<T> {
    * Return all keys of the current state object.
    */
   public get keys(): string[] {
-    return this.state && Object.keys(this.state);
+    return this.state ? Object.keys(this.state) : [];
   }
 
   /**
@@ -690,7 +633,9 @@ export class StateLake<T> {
     const [state, setState] = this.useState(...(path as EmptyPath));
 
     // Return callback to create effect
-    return (effect: (state: any, setState: (state: any) => any) => void) => {
+    return (
+      effect: (state: any, setState: (state: any) => any) => void | (() => void)
+    ) => {
       useEffect(() => effect(state, setState), [state]);
     };
   };
@@ -704,13 +649,13 @@ export class StateLake<T> {
    */
   public useKeys: Overload<T, 'useKeys'> = (...path: string[]) => {
     // Current state
-    const state = this.use(...(path as EmptyPath));
+    const [state, setState] = this.useState(...(path as EmptyPath));
 
     // Return memoized keys
-    return useMemo(() => [state ? Object.keys(state) : [], state], [state]) as [
-      any,
-      any
-    ];
+    return useMemo(
+      () => [state ? Object.keys(state) : [], state, setState],
+      [state, setState]
+    ) as [any, any, any];
   };
 
   /**
