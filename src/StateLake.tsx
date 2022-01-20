@@ -194,7 +194,7 @@ const generateId = (function () {
 /**
  * Mapped component properties
  */
-export type MappedComponentProps<T> = {
+type MappedComponentProps<T> = {
   branch: StateLake<T[keyof T]>;
   parent: StateLake<T>;
   idx: number;
@@ -420,6 +420,44 @@ function updateState<T>(
 }
 
 /**
+ * Logic for `StateLake.updateState`
+ */
+function handleUpdateState<T>(
+  branch: StateLake<T>,
+  new_state: T | ((previous_state: T) => T)
+) {
+  return updateState(
+    branch,
+    typeof new_state === 'function'
+      ? (new_state as (prev_state: T) => T)(branch.state)
+      : (new_state as T)
+  );
+}
+
+/**
+ * Logic for `StateLake.useState`
+ */
+function useStateHandler<T>(branch: StateLake<T>) {
+  // Create hook
+  const setState = useState(counter)[1];
+
+  // Register hook
+  useEffect(() => {
+    // Attach hook
+    if (branch['hooks'].indexOf(setState) === -1)
+      branch['hooks'].push(setState);
+
+    // Detach hook on component unmount
+    return function cleanup() {
+      branch['hooks'] = branch['hooks'].filter(test => test !== setState);
+    };
+  }, [branch['id'], setState]);
+
+  // Return
+  return [branch.state, branch['updateState']] as [any, any];
+}
+
+/**
  * StateLake class
  */
 export class StateLake<T> {
@@ -432,17 +470,6 @@ export class StateLake<T> {
    * Current state
    */
   private current_state: T;
-
-  /**
-   * Reference to parent of this branch (if any).
-   */
-  public readonly parent?: StateLake<any>;
-
-  /**
-   * The key used by the parent of this branch (if any) to reference this branch.
-   * If the branch is at the very top of the store, this will be `undefined`.
-   */
-  public readonly key: string;
 
   /**
    * A list containing all hooks connected to this branch.
@@ -459,26 +486,32 @@ export class StateLake<T> {
   /**
    * Initialize a new StateLake.
    *
-   * An initial state object needs to be provided, but `parent` and `key`
-   * should not be provided unless the new StateLake is to be connected to an
-   * existing StateLake.
+   * An initial state object needs to be provided.
    *
-   * @param state
-   * @param parent
-   * @param key
+   * Do not provide values for `parent` and `key`. These are only to be used when
+   * a StateLake-object is adding a new branch.
+   *
+   * @param initial_state
    */
   constructor(
     initial_state: T | (() => T),
-    parent?: StateLake<T>['parent'],
-    key?: StateLake<T>['key']
+    /**
+     * Reference to parent of this branch (if any).
+     * - Do not provide this parameter to the constructor.
+     */
+    public readonly parent?: StateLake<any>,
+    /**
+     * The key used by the parent of this branch (if any) to reference this branch.
+     * If the branch is at the very top of the store, this will be `""`.
+     * - Do not provide this parameter to the constructor.
+     */
+    public readonly key = ''
   ) {
     // Initialize parameter properties
     this.current_state =
       typeof initial_state === 'function'
         ? (initial_state as () => T)()
         : (initial_state as T);
-    this.parent = parent;
-    this.key = key || '';
 
     // Unique identifier
     this.id = generateId();
@@ -518,13 +551,8 @@ export class StateLake<T> {
   /**
    * Update state
    */
-  private updateState = (new_state: T | ((prev_state: T) => T)) =>
-    updateState(
-      this,
-      typeof new_state === 'function'
-        ? (new_state as (prev_state: T) => T)(this.state)
-        : (new_state as T)
-    );
+  private updateState: Dispatch<T> = new_state =>
+    handleUpdateState(this, new_state);
 
   /**
    * Get branch.
@@ -535,9 +563,8 @@ export class StateLake<T> {
    *
    * @param {String} path Relative path of branch
    */
-  public getBranch: Overload<T, 'getBranch'> = (...path: string[]) => {
-    return ensureBranch(this, path);
-  };
+  public getBranch: Overload<T, 'getBranch'> = (...path: string[]) =>
+    ensureBranch(this, path);
 
   /**
    * Set state.
@@ -589,36 +616,16 @@ export class StateLake<T> {
    * @example
    * const [car, setCar] = store.useState("car");
    */
-  public useState: Overload<T, 'useState'> = (...path: string[]) => {
-    // Reference branch
-    const branch = this.useBranch(...(path as EmptyPath)) as StateLake<any>;
-
-    // Create hook
-    const setState = useState(counter)[1];
-
-    // Register hook
-    useEffect(() => {
-      // Attach hook
-      if (branch.hooks.indexOf(setState) === -1) branch.hooks.push(setState);
-
-      // Detach hook on component unmount
-      return function cleanup() {
-        branch.hooks = branch.hooks.filter(test => test !== setState);
-      };
-    }, [branch.id, setState]);
-
-    // Return
-    return [branch.current_state, branch.updateState] as [any, any];
-  };
+  public useState: Overload<T, 'useState'> = (...path: string[]) =>
+    useStateHandler(this.useBranch(...(path as EmptyPath)) as StateLake<any>);
 
   /**
    * Shorthand for `const state = store.useState("my","path")[0];`
    *
    * @param {String} path Relative path of branch
    */
-  public use: Overload<T, 'use'> = (...path: string[]) => {
-    return this.useState(...(path as EmptyPath))[0] as any;
-  };
+  public use: Overload<T, 'use'> = (...path: string[]) =>
+    this.useState(...(path as EmptyPath))[0] as any;
 
   /**
    * Use effect

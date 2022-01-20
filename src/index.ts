@@ -1,2 +1,2 @@
 export { StateLake as default, StateLake } from './StateLake';
-export type { Dispatch, MappedComponentProps } from './StateLake';
+export type { Dispatch } from './StateLake';
