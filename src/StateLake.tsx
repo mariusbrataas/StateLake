@@ -495,11 +495,13 @@ export class StateLake<T> {
    */
   constructor(
     initial_state: T | (() => T),
+
     /**
      * Reference to parent of this branch (if any).
      * - Do not provide this parameter to the constructor.
      */
     public readonly parent?: StateLake<any>,
+
     /**
      * The key used by the parent of this branch (if any) to reference this branch.
      * If the branch is at the very top of the store, this will be `""`.
@@ -516,10 +518,8 @@ export class StateLake<T> {
     // Unique identifier
     this.id = generateId();
 
-    // Hooks placeholder
+    // Placeholders
     this.hooks = [];
-
-    // Branches placeholer
     this.branches = {};
   }
 
@@ -553,6 +553,17 @@ export class StateLake<T> {
    */
   private updateState: Dispatch<T> = new_state =>
     handleUpdateState(this, new_state);
+
+  /**
+   * Delete branch.
+   *
+   * This will not actually delete StateLake-objects, but they will be detached
+   * from the state tree. Unless the user keeps some reference to them, they should
+   * be collected by the garbage collector.
+   */
+  public delete = () => {
+    updateState(this as any, null, false);
+  };
 
   /**
    * Get branch.
@@ -641,7 +652,7 @@ export class StateLake<T> {
 
     // Return callback to create effect
     return (
-      effect: (state: any, setState: (state: any) => any) => void | (() => void)
+      effect: (state: any, setState: Dispatch<any>) => void | (() => void)
     ) => {
       useEffect(() => effect(state, setState), [state]);
     };
