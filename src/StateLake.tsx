@@ -444,11 +444,10 @@ function useStateHandler<T>(branch: StateLake<T>) {
   // Register hook
   useEffect(() => {
     // Attach hook
-    if (branch['hooks'].indexOf(setState) === -1)
-      branch['hooks'].push(setState);
+    branch['hooks'].push(setState);
 
     // Detach hook on component unmount
-    return function cleanup() {
+    return function () {
       branch['hooks'] = branch['hooks'].filter(test => test !== setState);
     };
   }, [branch['id'], setState]);
