@@ -18,13 +18,13 @@ By using TypeScript you'll also get type-safe states in every step of the proces
 
 > **Note**: This project is still being tested, and may still have some bugs. If you find a problem, please **[create a new issue](https://github.com/mariusbrataas/StateLake/issues)**, and feel free to **[contribute](https://github.com/mariusbrataas/StateLake/blob/master/CONTRIBUTE.md)**. Thanks!
 
-[![build](https://img.shields.io/github/workflow/status/mariusbrataas/StateLake/npm-publish/master?style=flat-square)](https://github.com/mariusbrataas/StateLake) [![npm-version](https://img.shields.io/npm/v/statelake?label=npm%20version&style=flat-square)](https://www.npmjs.com/package/statelake) [![downloads](https://img.shields.io/npm/dw/statelake?style=flat-square)](https://www.npmjs.com/package/statelake)
+[![npm-version](https://img.shields.io/npm/v/statelake?label=npm%20version&style=flat-square)](https://www.npmjs.com/package/statelake) [![downloads](https://img.shields.io/npm/dw/statelake?style=flat-square)](https://www.npmjs.com/package/statelake)
 
 ## Getting started
 
 ### Prerequisites
 
-You'll need [React v16.0.8](https://github.com/facebook/react/blob/master/CHANGELOG.md#1680-february-6-2019) or higher. This library utilizes [React hooks](https://reactjs.org/docs/hooks-intro.html), but does not install this dependency on it's own.
+You'll need [React v16.8](https://github.com/facebook/react/blob/master/CHANGELOG.md#1680-february-6-2019) or higher. This library utilizes [React hooks](https://reactjs.org/docs/hooks-intro.html), but does not install this dependency on it's own.
 
 ### Installation
 
@@ -116,7 +116,7 @@ function Note({ id }: { id: string }) {
  */
 function Note({ id }: { id: string }) {
   // Lake states
-  const [note, setNote] = store.useState('notes', id)();
+  const [note, setNote] = store.useState('notes', id);
 
   // Render
   return (
