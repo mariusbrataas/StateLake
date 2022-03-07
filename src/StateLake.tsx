@@ -8,21 +8,21 @@ type EmptyPath = [any];
 /**
  * Dispatch state update
  */
-export type Dispatch<T> = (new_state: T | ((previous_state: T) => T)) => T;
+export type SetState<T> = (new_state: T | ((previous_state: T) => T)) => T;
 
 /**
  * Outputs of overloaded methods
  */
 type ReturnOutputs<T> = {
   getBranch: StateLake<T>;
-  setState: Dispatch<T>;
+  setState: SetState<T>;
   useBranch: StateLake<T>;
-  useState: [T, Dispatch<T>];
+  useState: [T, SetState<T>];
   useEffect: (
-    effect: (state: T, setState: Dispatch<T>) => void | (() => void)
+    effect: (state: T, setState: SetState<T>) => void | (() => void)
   ) => void;
   use: T;
-  useKeys: [keys: string[], state: T, setState: Dispatch<T>];
+  useKeys: [keys: string[], state: T, setState: SetState<T>];
 };
 
 /**
@@ -320,15 +320,16 @@ function changeState<T>(branch: StateLake<T>, new_state: T) {
 }
 
 /**
- * Update the value of a branch.
+ * Update the parent of a given branch.
  *
  * If the given branch is either being deleted, or not yet tracked by `this` branch, the current state object
  * will be updated.
  */
-function updateBranchState<T>(
-  parent: StateLake<T>,
-  branch: StateLake<T[keyof T]>
-) {
+function updateParentState<T>(branch: StateLake<T>) {
+  // Get parent, or return if it doesn't exists
+  const parent = branch.parent as StateLake<any>;
+  if (!parent) return;
+
   // Helper variables
   const got_key = parent.state && branch?.key in parent.state;
 
@@ -343,14 +344,13 @@ function updateBranchState<T>(
       add_or_remove = true;
 
       // Change state
-      const { [branch.key as keyof T]: remove_state, ...new_state } =
-        parent.state || {};
-      changeState(parent, new_state as any);
+      const { [branch.key]: remove_state, ...new_state } = parent.state || {};
+      changeState(parent, new_state);
 
       // Remove from branches
-      const { [branch.key as keyof T]: remove_branch, ...new_branches } =
+      const { [branch.key]: remove_branch, ...new_branches } =
         parent['branches'];
-      parent['branches'] = new_branches as StateLake<T>['branches'];
+      parent['branches'] = new_branches;
     }
   } else {
     // Add branch?
@@ -368,11 +368,9 @@ function updateBranchState<T>(
 
   // Update parent if branch is being added or removed, else mutate state
   if (add_or_remove) {
-    // Update parent
-    if (parent.parent) updateBranchState(parent.parent, parent);
+    updateParentState(parent);
   } else {
-    // Mutate state object
-    parent.state[branch.key as keyof T] = branch.state;
+    parent.state[branch.key] = branch.state;
   }
 }
 
@@ -399,8 +397,7 @@ function updateState<T>(
     changeState(branch, new_state);
 
     // Update parent state object
-    if (branch.parent && !parent_updated)
-      updateBranchState(branch.parent, branch);
+    if (!parent_updated) updateParentState(branch);
   }
 
   // Recurse down branches
@@ -424,7 +421,7 @@ function updateState<T>(
  */
 function handleUpdateState<T>(
   branch: StateLake<T>,
-  new_state: T | ((previous_state: T) => T)
+  new_state: Parameters<SetState<T>>[0]
 ) {
   return updateState(
     branch,
@@ -532,6 +529,13 @@ export class StateLake<T> {
   }
 
   /**
+   * Set the current state and update all connected components
+   */
+  public set state(new_state: T) {
+    this.updateState(new_state);
+  }
+
+  /**
    * Reference to the StateLake-object at the top of the store.
    */
   public get top(): StateLake<any> {
@@ -550,7 +554,7 @@ export class StateLake<T> {
   /**
    * Update state
    */
-  private updateState: Dispatch<T> = new_state =>
+  private updateState: SetState<T> = new_state =>
     handleUpdateState(this, new_state);
 
   /**
@@ -651,7 +655,7 @@ export class StateLake<T> {
 
     // Return callback to create effect
     return (
-      effect: (state: any, setState: Dispatch<any>) => void | (() => void)
+      effect: (state: any, setState: SetState<any>) => void | (() => void)
     ) => {
       useEffect(() => effect(state, setState), [state]);
     };
