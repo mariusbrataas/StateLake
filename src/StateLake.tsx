@@ -290,20 +290,18 @@ function MapBranch<T, P>({
  * Recursively propagate through the state tree to retrieve the branch at the
  * given path. Missing branches will be created along the way.
  */
-function ensureBranch<T>(
-  branch: StateLake<T>,
-  [prop, ...path]: string[]
-): StateLake<any> {
+function ensureBranch<T>(branch: StateLake<T>, path: string[]): StateLake<any> {
+  const prop = path[0] as keyof T | undefined;
   return prop === undefined
     ? branch
     : ensureBranch(
-        (branch['branches'][prop as keyof T] ||
-          (branch['branches'][prop as keyof T] = new StateLake(
-            branch.state && (branch.state as NonNullable<T>)[prop as keyof T],
+        (branch['branches'][prop] ||
+          (branch['branches'][prop] = new StateLake(
+            branch.state?.[prop] as NonNullable<T>[keyof T],
             branch,
-            prop
+            prop as string
           ))) as StateLake<NonNullable<T>[keyof T]>,
-        path
+        path.slice(1)
       );
 }
 
@@ -391,12 +389,9 @@ function updateState<T>(
   // Should update?
   const do_update = parent_updated || new_state !== branch.state;
 
-  // Update
+  // Update state and notify parent
   if (do_update) {
-    // Change state
     changeState(branch, new_state);
-
-    // Update parent state object
     if (!parent_updated) updateParentState(branch);
   }
 
@@ -450,7 +445,7 @@ function useStateHandler<T>(branch: StateLake<T>) {
   }, [branch['id'], setState]);
 
   // Return
-  return [branch.state, branch['updateState']] as [any, any];
+  return [branch.state, branch['updateState']] as ReturnOutputs<T>['useState'];
 }
 
 /**
@@ -460,7 +455,7 @@ export class StateLake<T> {
   /**
    * Unique identifier
    */
-  private id: string;
+  private readonly id: string = generateId();
 
   /**
    * Current state
@@ -470,22 +465,19 @@ export class StateLake<T> {
   /**
    * A list containing all hooks connected to this branch.
    */
-  private hooks: ((state: number) => void)[];
+  private hooks: ((state: number) => void)[] = [];
 
   /**
    * References to all sub-branches of this branch.
    */
   private branches: {
     [key in Keys<T>]?: StateLake<NonNullable<T>[key]>;
-  };
+  } = {};
 
   /**
    * Initialize a new StateLake.
    *
    * An initial state object needs to be provided.
-   *
-   * Do not provide values for `parent` and `key`. These are only to be used when
-   * a StateLake-object is adding a new branch.
    *
    * @param initial_state
    */
@@ -505,18 +497,10 @@ export class StateLake<T> {
      */
     public readonly key = ''
   ) {
-    // Initialize parameter properties
     this.current_state =
       typeof initial_state === 'function'
         ? (initial_state as () => T)()
         : (initial_state as T);
-
-    // Unique identifier
-    this.id = generateId();
-
-    // Placeholders
-    this.hooks = [];
-    this.branches = {};
   }
 
   /**
@@ -540,6 +524,13 @@ export class StateLake<T> {
    */
   public get top(): StateLake<any> {
     return this.parent?.top || this;
+  }
+
+  /**
+   * Full path from the top of the store to this branch.
+   */
+  public get path(): string[] {
+    return this.parent ? [...this.parent.path, this.key] : [];
   }
 
   /**
@@ -603,7 +594,7 @@ export class StateLake<T> {
    * });
    */
   public setState: Overload<T, 'setState'> = (...path: string[]) =>
-    (this.getBranch(...(path as EmptyPath)) as StateLake<any>).updateState;
+    ensureBranch(this, path).updateState;
 
   /**
    * Use branch.
@@ -614,10 +605,7 @@ export class StateLake<T> {
    * @param {String} path Relative path of branch
    */
   public useBranch: Overload<T, 'useBranch'> = (...path: string[]) =>
-    useMemo(
-      () => this.getBranch(...(path as EmptyPath)) as any,
-      [this.id, ...path]
-    );
+    useMemo(() => ensureBranch(this, path), [this.id, ...path]);
 
   /**
    * Use state.
