@@ -14,11 +14,6 @@
     "noEmit": false,
     "noFallthroughCasesInSwitch": true,
     "outDir": "build",
-    "plugins": [
-      {
-        "name": "typescript-plugin-css-modules"
-      }
-    ],
     "removeComments": false,
     "resolveJsonModule": true,
     "rootDir": "./src",
