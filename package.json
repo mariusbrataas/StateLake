@@ -4,6 +4,7 @@
   "description": "",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "type": "module",
   "scripts": {
     "clean": "rm -rf build",
     "build": "tsc && tsc -p ./tsconfig.nocomments.json && npm run minify",
